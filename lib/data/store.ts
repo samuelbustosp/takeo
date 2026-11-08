@@ -1,379 +1,443 @@
 import {
-  Business,
-  BusinessSettings,
-  Category,
-  Product,
-  Discount,
-  Order,
-  OrderStatus,
-  WhatsAppMessage,
-  OrderItem,
+  Business, BusinessSettings, Category, Product, Discount, Order, OrderStatus, WhatsAppMessage, OrderItem
 } from '@/types';
-import {
-  INITIAL_BUSINESS,
-  INITIAL_SETTINGS,
-  INITIAL_CATEGORIES,
-  INITIAL_PRODUCTS,
-  INITIAL_DISCOUNTS,
-  INITIAL_ORDERS,
-  INITIAL_MESSAGES,
-} from './mock-data';
-import { isSupabaseConfigured, supabase } from '../supabase/client';
-import { serverSupabase, isServerSupabaseConfigured } from '../supabase/server';
-import { sendWhatsAppMessage } from '../whatsapp/service';
+import { createClient } from '../supabase/client';
 
-const STORAGE_KEYS = {
-  BUSINESS: 'takeo_business',
-  SETTINGS: 'takeo_settings',
-  CATEGORIES: 'takeo_categories',
-  PRODUCTS: 'takeo_products',
-  DISCOUNTS: 'takeo_discounts',
-  ORDERS: 'takeo_orders',
-  MESSAGES: 'takeo_messages',
-};
-
-// In-memory singletons for server runtime
-let memoryBusiness: Business = { ...INITIAL_BUSINESS };
-let memorySettings: BusinessSettings = { ...INITIAL_SETTINGS };
-let memoryCategories: Category[] = [...INITIAL_CATEGORIES];
-let memoryProducts: Product[] = [...INITIAL_PRODUCTS];
-let memoryDiscounts: Discount[] = [...INITIAL_DISCOUNTS];
-let memoryOrders: Order[] = [...INITIAL_ORDERS];
-let memoryMessages: WhatsAppMessage[] = [...INITIAL_MESSAGES];
-
-function isBrowser(): boolean {
-  return typeof window !== 'undefined';
-}
-
-function getStored<T>(key: string, fallback: T): T {
-  if (!isBrowser()) return fallback;
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
-  } catch {
-    return fallback;
+export async function getBusiness(slugOrId?: string | null): Promise<Business | null> {
+  const supabase = createClient();
+  
+  if (slugOrId) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+    let query = supabase.from('businesses').select('*');
+    if (isUuid) {
+      query = query.eq('id', slugOrId);
+    } else {
+      query = query.eq('slug', slugOrId);
+    }
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) {
+      return null;
+    }
+    return data as unknown as Business;
   }
-}
 
-function setStored<T>(key: string, value: T): void {
-  if (!isBrowser()) return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('Failed to write to localStorage', e);
+  // If no slug or id, try to get the business of the logged in user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase.from('businesses').select('*').eq('user_id', user.id).maybeSingle();
+  if (error || !data) {
+    return null;
   }
+  return data as unknown as Business;
 }
 
-// -----------------------------------------------------------------------------
-// BUSINESS & SETTINGS
-// -----------------------------------------------------------------------------
-export async function getBusiness(slug: string = 'takeo-express'): Promise<Business> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('businesses').select('*').eq('slug', slug).single();
-    if (data) return data as Business;
+export async function createBusiness(payload: Partial<Business>): Promise<Business | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Usuario no autenticado');
+
+  const { data, error } = await supabase
+    .from('businesses')
+    .insert([{
+      ...payload,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Ensure default settings exist
+  if (data?.id) {
+    await supabase.from('business_settings').upsert({
+      business_id: data.id,
+      whatsapp_notify_on_new_order: true,
+      whatsapp_notify_customer_confirmed: true,
+      whatsapp_notify_customer_ready: true,
+      whatsapp_notify_customer_out_for_delivery: true,
+      whatsapp_template_confirmed: '¡Hola {{customer_name}}! ✅ Tu pedido #{{order_number}} ha sido confirmado por {{business_name}}.',
+      whatsapp_template_ready: '¡Hola {{customer_name}}! 🟢 Tu pedido #{{order_number}} está listo para retirar en {{business_address}}.',
+      whatsapp_template_out_delivery: '¡Hola {{customer_name}}! 🛵 Tu pedido #{{order_number}} va en camino a tu dirección.',
+    }, { onConflict: 'business_id' });
   }
-  return isBrowser() ? getStored<Business>(STORAGE_KEYS.BUSINESS, memoryBusiness) : memoryBusiness;
+
+  return data as unknown as Business;
 }
 
-export async function updateBusiness(updates: Partial<Business>): Promise<Business> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb
+export async function updateBusiness(updates: Partial<Business>): Promise<Business | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Check if business exists
+  if (updates.id) {
+    const { data, error } = await supabase
       .from('businesses')
       .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', updates.id || memoryBusiness.id)
+      .eq('id', updates.id)
       .select()
       .single();
-    if (data) return data as Business;
+
+    if (error) throw error;
+    return data as unknown as Business;
   }
 
-  const current = isBrowser() ? getStored<Business>(STORAGE_KEYS.BUSINESS, memoryBusiness) : memoryBusiness;
-  const updated: Business = { ...current, ...updates, updated_at: new Date().toISOString() };
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.BUSINESS, updated);
-  }
-  memoryBusiness = updated;
-  return updated;
+  const { data, error } = await supabase
+    .from('businesses')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Business;
 }
 
-export async function getSettings(businessId: string = memoryBusiness.id): Promise<BusinessSettings> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('business_settings').select('*').eq('business_id', businessId).single();
-    if (data) return data as BusinessSettings;
-  }
-  return isBrowser() ? getStored<BusinessSettings>(STORAGE_KEYS.SETTINGS, memorySettings) : memorySettings;
+async function resolveBusinessId(providedId?: string): Promise<string | null> {
+  if (providedId) return providedId;
+  const b = await getBusiness();
+  return b ? b.id : null;
 }
 
-export async function updateSettings(updates: Partial<BusinessSettings>): Promise<BusinessSettings> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb
-      .from('business_settings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('business_id', updates.business_id || memoryBusiness.id)
-      .select()
-      .single();
-    if (data) return data as BusinessSettings;
-  }
+export async function getSettings(businessId?: string): Promise<BusinessSettings | null> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return null;
 
-  const current = isBrowser() ? getStored<BusinessSettings>(STORAGE_KEYS.SETTINGS, memorySettings) : memorySettings;
-  const updated: BusinessSettings = { ...current, ...updates, updated_at: new Date().toISOString() };
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.SETTINGS, updated);
-  }
-  memorySettings = updated;
-  return updated;
+  const { data, error } = await supabase.from('business_settings').select('*').eq('business_id', bId).maybeSingle();
+  if (error && error.code !== 'PGRST116') console.error('Error fetching settings', error);
+
+  if (data) return data as unknown as BusinessSettings;
+
+  // Default settings fallback
+  return {
+    id: '',
+    business_id: bId,
+    whatsapp_notify_on_new_order: true,
+    whatsapp_notify_customer_confirmed: true,
+    whatsapp_notify_customer_ready: true,
+    whatsapp_notify_customer_out_for_delivery: true,
+    whatsapp_template_confirmed: '¡Hola {{customer_name}}! ✅ Tu pedido #{{order_number}} ha sido confirmado por {{business_name}}.',
+    whatsapp_template_ready: '¡Hola {{customer_name}}! 🟢 Tu pedido #{{order_number}} está listo para retirar en {{business_address}}.',
+    whatsapp_template_out_delivery: '¡Hola {{customer_name}}! 🛵 Tu pedido #{{order_number}} va en camino a tu dirección.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
 
-// -----------------------------------------------------------------------------
-// CATEGORIES
-// -----------------------------------------------------------------------------
-export async function getCategories(businessId: string = memoryBusiness.id): Promise<Category[]> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('categories').select('*').eq('business_id', businessId).order('display_order', { ascending: true });
-    if (data && data.length > 0) return data as Category[];
+export async function updateSettings(updates: Partial<BusinessSettings>): Promise<BusinessSettings | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('business_settings')
+    .upsert({ ...updates, updated_at: new Date().toISOString() }, { onConflict: 'business_id' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as unknown as BusinessSettings;
+}
+
+// Categories
+export async function getCategories(businessId?: string): Promise<Category[]> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return [];
+
+  const { data, error } = await supabase.from('categories').select('*').eq('business_id', bId).order('display_order', { ascending: true });
+  if (error) throw error;
+  return (data || []) as unknown as Category[];
+}
+
+// Helpers
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+}
+
+async function generateUniqueCategorySlug(
+  supabase: ReturnType<typeof createClient>,
+  businessId: string,
+  baseName: string,
+  excludeId?: string
+): Promise<string> {
+  const base = slugify(baseName) || 'categoria';
+  let slug = base;
+  let counter = 1;
+
+  while (true) {
+    let query = supabase
+      .from('categories')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('slug', slug);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error && error.code !== 'PGRST116') {
+      return `${base}-${Date.now().toString(36)}`;
+    }
+    if (!data) {
+      return slug;
+    }
+    counter++;
+    slug = `${base}-${counter}`;
   }
-  const cats = isBrowser() ? getStored<Category[]>(STORAGE_KEYS.CATEGORIES, memoryCategories) : memoryCategories;
-  return [...cats].sort((a, b) => a.display_order - b.display_order);
+}
+
+async function generateUniqueProductSlug(
+  supabase: ReturnType<typeof createClient>,
+  businessId: string,
+  baseName: string,
+  excludeId?: string
+): Promise<string> {
+  const base = slugify(baseName) || 'producto';
+  let slug = base;
+  let counter = 1;
+
+  while (true) {
+    let query = supabase
+      .from('products')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('slug', slug);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error && error.code !== 'PGRST116') {
+      return `${base}-${Date.now().toString(36)}`;
+    }
+    if (!data) {
+      return slug;
+    }
+    counter++;
+    slug = `${base}-${counter}`;
+  }
 }
 
 export async function createCategory(cat: Partial<Category>): Promise<Category> {
-  const newCat: Category = {
-    id: `c_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    business_id: cat.business_id || memoryBusiness.id,
-    name: cat.name || 'Nueva Categoría',
-    slug: cat.slug || (cat.name ? cat.name.toLowerCase().replace(/\s+/g, '-') : 'categoria'),
-    description: cat.description || '',
-    display_order: cat.display_order || 99,
-    icon: cat.icon || 'Utensils',
-    is_active: cat.is_active !== undefined ? cat.is_active : true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  const supabase = createClient();
+  let bId = cat.business_id;
+  if (!bId) {
+    bId = (await resolveBusinessId()) || undefined;
+  }
+  if (!bId) throw new Error('No se pudo identificar el negocio');
 
-  const list = await getCategories(newCat.business_id);
-  const updatedList = [...list, newCat];
-  if (isBrowser()) setStored(STORAGE_KEYS.CATEGORIES, updatedList);
-  memoryCategories = updatedList;
-  return newCat;
+  const slug = cat.slug?.trim()
+    ? slugify(cat.slug)
+    : await generateUniqueCategorySlug(supabase, bId, cat.name || 'categoria');
+
+  const { data, error } = await supabase
+    .from('categories')
+    .insert([{ ...cat, slug, business_id: bId }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Category;
 }
 
 export async function updateCategory(id: string, updates: Partial<Category>): Promise<Category> {
-  const list = await getCategories();
-  const index = list.findIndex((c) => c.id === id);
-  if (index === -1) throw new Error('Categoría no encontrada');
-
-  const updated: Category = { ...list[index], ...updates, updated_at: new Date().toISOString() };
-  list[index] = updated;
-  if (isBrowser()) setStored(STORAGE_KEYS.CATEGORIES, list);
-  memoryCategories = list;
-  return updated;
-}
-
-export async function deleteCategory(id: string): Promise<void> {
-  const list = await getCategories();
-  const filtered = list.filter((c) => c.id !== id);
-  if (isBrowser()) setStored(STORAGE_KEYS.CATEGORIES, filtered);
-  memoryCategories = filtered;
-}
-
-// -----------------------------------------------------------------------------
-// PRODUCTS
-// -----------------------------------------------------------------------------
-export async function getProducts(businessId: string = memoryBusiness.id): Promise<Product[]> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('products').select('*').eq('business_id', businessId).order('display_order', { ascending: true });
-    if (data && data.length > 0) return data as Product[];
-  }
-  const prods = isBrowser() ? getStored<Product[]>(STORAGE_KEYS.PRODUCTS, memoryProducts) : memoryProducts;
-  return [...prods].sort((a, b) => a.display_order - b.display_order);
-}
-
-export async function createProduct(prod: Partial<Product>): Promise<Product> {
-  const newProd: Product = {
-    id: `p_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    business_id: prod.business_id || memoryBusiness.id,
-    category_id: prod.category_id,
-    name: prod.name || 'Nuevo Producto',
-    slug: prod.slug || (prod.name ? prod.name.toLowerCase().replace(/\s+/g, '-') : 'producto'),
-    description: prod.description || '',
-    price: Number(prod.price) || 0,
-    compare_at_price: prod.compare_at_price ? Number(prod.compare_at_price) : null,
-    image_url: prod.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
-    is_available: prod.is_available !== undefined ? prod.is_available : true,
-    is_featured: Boolean(prod.is_featured),
-    display_order: prod.display_order || 99,
-    created_at: new Date().toISOString(),
+  const supabase = createClient();
+  const payload: Record<string, any> = {
+    ...updates,
     updated_at: new Date().toISOString(),
   };
 
-  const list = await getProducts(newProd.business_id);
-  const updatedList = [...list, newProd];
-  if (isBrowser()) setStored(STORAGE_KEYS.PRODUCTS, updatedList);
-  memoryProducts = updatedList;
-  return newProd;
+  if (updates.slug !== undefined) {
+    payload.slug = slugify(updates.slug);
+  }
+
+  const { data, error } = await supabase
+    .from('categories')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Category;
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Products
+export async function getProducts(businessId?: string): Promise<Product[]> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return [];
+
+  const { data, error } = await supabase.from('products').select('*').eq('business_id', bId).order('display_order', { ascending: true });
+  if (error) throw error;
+  return (data || []) as unknown as Product[];
+}
+
+export async function createProduct(prod: Partial<Product>): Promise<Product> {
+  const supabase = createClient();
+  let bId = prod.business_id;
+  if (!bId) {
+    bId = (await resolveBusinessId()) || undefined;
+  }
+  if (!bId) throw new Error('No se pudo identificar el negocio');
+
+  const slug = prod.slug?.trim()
+    ? slugify(prod.slug)
+    : await generateUniqueProductSlug(supabase, bId, prod.name || 'producto');
+
+  const { data, error } = await supabase
+    .from('products')
+    .insert([{
+      ...prod,
+      slug,
+      business_id: bId,
+      category_id: prod.category_id || null,
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Product;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-  const list = await getProducts();
-  const index = list.findIndex((p) => p.id === id);
-  if (index === -1) throw new Error('Producto no encontrado');
+  const supabase = createClient();
+  const payload: Record<string, any> = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
 
-  const updated: Product = { ...list[index], ...updates, updated_at: new Date().toISOString() };
-  list[index] = updated;
-  if (isBrowser()) setStored(STORAGE_KEYS.PRODUCTS, list);
-  memoryProducts = list;
-  return updated;
+  if (updates.category_id !== undefined) {
+    payload.category_id = updates.category_id || null;
+  }
+
+  if (updates.slug !== undefined) {
+    payload.slug = slugify(updates.slug);
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as unknown as Product;
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const list = await getProducts();
-  const filtered = list.filter((p) => p.id !== id);
-  if (isBrowser()) setStored(STORAGE_KEYS.PRODUCTS, filtered);
-  memoryProducts = filtered;
+  const supabase = createClient();
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
 }
 
-// -----------------------------------------------------------------------------
-// DISCOUNTS
-// -----------------------------------------------------------------------------
-export async function getDiscounts(businessId: string = memoryBusiness.id): Promise<Discount[]> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('discounts').select('*').eq('business_id', businessId);
-    if (data && data.length > 0) return data as Discount[];
+// Discounts
+export async function getDiscounts(businessId?: string): Promise<Discount[]> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return [];
+
+  const { data, error } = await supabase.from('discounts').select('*').eq('business_id', bId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as unknown as Discount[];
+}
+
+export async function createDiscount(discount: Partial<Discount>): Promise<Discount> {
+  const supabase = createClient();
+  let bId = discount.business_id;
+  if (!bId) {
+    bId = (await resolveBusinessId()) || undefined;
   }
-  return isBrowser() ? getStored<Discount[]>(STORAGE_KEYS.DISCOUNTS, memoryDiscounts) : memoryDiscounts;
-}
-
-export async function createDiscount(disc: Partial<Discount>): Promise<Discount> {
-  const newDisc: Discount = {
-    id: `d_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    business_id: disc.business_id || memoryBusiness.id,
-    code: (disc.code || 'PROMO').toUpperCase().trim(),
-    title: disc.title || 'Promoción especial',
-    type: disc.type || 'PERCENTAGE',
-    value: Number(disc.value) || 10,
-    min_order_amount: Number(disc.min_order_amount) || 0,
-    is_active: disc.is_active !== undefined ? disc.is_active : true,
-    usage_limit: disc.usage_limit ? Number(disc.usage_limit) : undefined,
-    usage_count: 0,
-    created_at: new Date().toISOString(),
-  };
-
-  const list = await getDiscounts(newDisc.business_id);
-  const updatedList = [...list, newDisc];
-  if (isBrowser()) setStored(STORAGE_KEYS.DISCOUNTS, updatedList);
-  memoryDiscounts = updatedList;
-  return newDisc;
+  const { data, error } = await supabase.from('discounts').insert([{ ...discount, business_id: bId }]).select().single();
+  if (error) throw error;
+  return data as unknown as Discount;
 }
 
 export async function updateDiscount(id: string, updates: Partial<Discount>): Promise<Discount> {
-  const list = await getDiscounts();
-  const index = list.findIndex((d) => d.id === id);
-  if (index === -1) throw new Error('Descuento no encontrado');
+  const supabase = createClient();
+  const { data, error } = await supabase.from('discounts').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  if (error) throw error;
+  return data as unknown as Discount;
+}
 
-  const updated: Discount = { ...list[index], ...updates };
-  list[index] = updated;
-  if (isBrowser()) setStored(STORAGE_KEYS.DISCOUNTS, list);
-  memoryDiscounts = list;
-  return updated;
+export async function deleteDiscount(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from('discounts').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function validateDiscountCode(
   code: string,
   subtotal: number,
-  businessId: string = memoryBusiness.id
+  businessId?: string
 ): Promise<{ valid: boolean; discount?: Discount; discountAmount: number; message: string }> {
   const discounts = await getDiscounts(businessId);
-  const cleanCode = code.trim().toUpperCase();
-  const match = discounts.find((d) => d.code === cleanCode && d.is_active);
+  const match = discounts.find(
+    (d) => d.code.toUpperCase() === code.toUpperCase() && d.is_active
+  );
 
-  if (!match) {
-    return { valid: false, discountAmount: 0, message: 'Código de descuento inválido o vencido' };
-  }
-
+  if (!match) return { valid: false, discountAmount: 0, message: 'Código inválido o vencido' };
   if (match.min_order_amount > 0 && subtotal < match.min_order_amount) {
-    return {
-      valid: false,
-      discountAmount: 0,
-      message: `El pedido mínimo para aplicar este cupón es de $${match.min_order_amount.toLocaleString('es-AR')}`,
-    };
+    return { valid: false, discountAmount: 0, message: `El pedido mínimo es de $${match.min_order_amount}` };
   }
 
-  let amount = 0;
-  if (match.type === 'PERCENTAGE') {
-    amount = Math.round((subtotal * match.value) / 100);
-    if (match.max_discount_amount && amount > match.max_discount_amount) {
-      amount = match.max_discount_amount;
-    }
-  } else {
-    amount = Math.min(match.value, subtotal);
+  let amount = match.type === 'PERCENTAGE' ? Math.round((subtotal * match.value) / 100) : Math.min(match.value, subtotal);
+  if (match.type === 'PERCENTAGE' && match.max_discount_amount && amount > match.max_discount_amount) {
+    amount = match.max_discount_amount;
   }
-
-  return {
-    valid: true,
-    discount: match,
-    discountAmount: amount,
-    message: `¡Cupón ${match.code} aplicado con éxito!`,
-  };
+  return { valid: true, discount: match, discountAmount: amount, message: '¡Cupón aplicado!' };
 }
 
-// -----------------------------------------------------------------------------
-// ORDERS
-// -----------------------------------------------------------------------------
-export async function getOrders(businessId: string = memoryBusiness.id): Promise<Order[]> {
-  const sb = isBrowser() ? (isSupabaseConfigured ? supabase : null) : (isServerSupabaseConfigured ? serverSupabase : null);
-  if (sb) {
-    const { data } = await sb.from('orders').select('*, items:order_items(*)').eq('business_id', businessId).order('created_at', { ascending: false });
-    if (data && data.length > 0) return data as Order[];
-  }
-  const orders = isBrowser() ? getStored<Order[]>(STORAGE_KEYS.ORDERS, memoryOrders) : memoryOrders;
-  return [...orders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+// Orders
+export async function getOrders(businessId?: string): Promise<Order[]> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return [];
+
+  const { data, error } = await supabase.from('orders').select('*, items:order_items(*)').eq('business_id', bId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as unknown as Order[];
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
-  const orders = await getOrders();
-  return orders.find((o) => o.id === id || String(o.order_number) === id) || null;
+  const supabase = createClient();
+  const { data, error } = await supabase.from('orders').select('*, items:order_items(*)').eq('id', id).single();
+  if (error) return null;
+  return data as unknown as Order;
 }
 
-export interface CreateOrderPayload {
-  businessId: string;
-  customerName: string;
-  customerPhone: string;
-  deliveryType: 'PICKUP' | 'DELIVERY';
-  deliveryAddress?: string;
-  deliveryNotes?: string;
-  paymentMethod: 'CASH' | 'TRANSFER' | 'MERCADO_PAGO' | 'OTHER';
-  notes?: string;
-  discountCode?: string;
-  items: {
-    productId: string;
-    quantity: number;
-    notes?: string;
-  }[];
-}
+export async function createOrder(payload: any): Promise<Order> {
+  const supabase = createClient();
+  const businessIdentifier = payload.businessId || payload.businessSlug;
+  const business = await getBusiness(businessIdentifier);
+  if (!business) throw new Error('Negocio no encontrado');
 
-export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
-  const business = await getBusiness(payload.businessId);
-  const products = await getProducts(payload.businessId);
-
-  // 1. Validate prices server-side
+  const products = await getProducts(business.id);
   let calculatedSubtotal = 0;
-  const orderItems: OrderItem[] = [];
-  const orderId = `o_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-
-  for (const item of payload.items) {
-    const prod = products.find((p) => p.id === item.productId);
-    if (!prod) continue;
+  
+  const orderItemsData = payload.items.map((item: any) => {
+    const prod = products.find(p => p.id === item.productId);
+    if (!prod) throw new Error('Product not found');
     const itemSubtotal = prod.price * item.quantity;
     calculatedSubtotal += itemSubtotal;
-    orderItems.push({
-      id: `i_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      order_id: orderId,
+    return {
       product_id: prod.id,
       product_name: prod.name,
       product_image_url: prod.image_url,
@@ -381,29 +445,19 @@ export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
       unit_price: prod.price,
       subtotal: itemSubtotal,
       notes: item.notes,
-    });
-  }
+    };
+  });
 
-  // 2. Validate discount
   let discountTotal = 0;
   if (payload.discountCode) {
-    const discResult = await validateDiscountCode(payload.discountCode, calculatedSubtotal, business.id);
-    if (discResult.valid) {
-      discountTotal = discResult.discountAmount;
-    }
+    const disc = await validateDiscountCode(payload.discountCode, calculatedSubtotal, business.id);
+    if (disc.valid) discountTotal = disc.discountAmount;
   }
-
+  
   const deliveryFee = payload.deliveryType === 'DELIVERY' ? business.delivery_fee : 0;
   const total = Math.max(0, calculatedSubtotal - discountTotal + deliveryFee);
 
-  // Generate sequential order number
-  const allOrders = await getOrders(business.id);
-  const maxNumber = allOrders.reduce((max, o) => Math.max(max, o.order_number), 1000);
-  const orderNumber = maxNumber + 1;
-
-  const newOrder: Order = {
-    id: orderId,
-    order_number: orderNumber,
+  const { data: orderData, error: orderError } = await supabase.from('orders').insert([{
     business_id: business.id,
     customer_name: payload.customerName.trim(),
     customer_phone: payload.customerPhone.trim(),
@@ -413,305 +467,73 @@ export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
     delivery_notes: payload.deliveryNotes,
     delivery_fee: deliveryFee,
     payment_method: payload.paymentMethod,
-    payment_status: 'PENDING',
     notes: payload.notes,
     subtotal: calculatedSubtotal,
     discount_code: payload.discountCode,
     discount_total: discountTotal,
     total,
-    items: orderItems,
-    whatsapp_business_sent: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  }]).select().single();
+  
+  if (orderError) throw orderError;
 
-  // 3. Dispatch WhatsApp to Business
-  const settings = await getSettings(business.id);
-  try {
-    const waResult = await sendWhatsAppMessage({
-      business,
-      settings,
-      order: newOrder,
-      eventType: 'NEW_ORDER',
-      target: 'BUSINESS',
-    });
+  const itemsToInsert = orderItemsData.map((item: any) => ({ ...item, order_id: orderData.id }));
+  const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+  if (itemsError) throw itemsError;
 
-    newOrder.whatsapp_business_sent = waResult.success;
-    if (!waResult.success) {
-      newOrder.whatsapp_business_error = waResult.error;
-    }
-
-    // Log message
-    await recordWhatsAppMessage({
-      business_id: business.id,
-      order_id: newOrder.id,
-      recipient_phone: business.phone_whatsapp,
-      recipient_type: 'BUSINESS',
-      event_type: 'NEW_ORDER',
-      message_text: waResult.messageText,
-      status: waResult.success ? 'SENT' : 'FAILED',
-      attempts: 1,
-      last_error: waResult.error,
-      cloud_message_id: waResult.messageId,
-    });
-  } catch (err: any) {
-    console.error('WhatsApp business notification error:', err);
-  }
-
-  // 4. Save order to storage
-  const updatedOrders = [newOrder, ...allOrders];
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.ORDERS, updatedOrders);
-  }
-  memoryOrders = updatedOrders;
-
-  return newOrder;
+  return orderData as unknown as Order;
 }
 
-export async function updateOrderStatus(
-  orderId: string,
-  newStatus: OrderStatus,
-  triggerWhatsApp: boolean = true
-): Promise<Order> {
-  const orders = await getOrders();
-  const index = orders.findIndex((o) => o.id === orderId || String(o.order_number) === orderId);
-  if (index === -1) throw new Error('Pedido no encontrado');
-
-  const order = orders[index];
-  const updatedOrder: Order = {
-    ...order,
-    status: newStatus,
-    updated_at: new Date().toISOString(),
-  };
-
-  // If status is DELIVERED and payment was pending with cash, mark as paid
-  if (newStatus === 'DELIVERED') {
-    updatedOrder.payment_status = 'PAID';
-  }
-
-  // Dispatch WhatsApp to customer on relevant status change
-  if (triggerWhatsApp && ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'].includes(newStatus)) {
-    const business = await getBusiness(order.business_id);
-    const settings = await getSettings(order.business_id);
-
-    try {
-      const waResult = await sendWhatsAppMessage({
-        business,
-        settings,
-        order: updatedOrder,
-        eventType: newStatus as any,
-        target: 'CUSTOMER',
-      });
-
-      await recordWhatsAppMessage({
-        business_id: business.id,
-        order_id: updatedOrder.id,
-        recipient_phone: updatedOrder.customer_phone,
-        recipient_type: 'CUSTOMER',
-        event_type: newStatus as any,
-        message_text: waResult.messageText,
-        status: waResult.success ? 'SENT' : 'FAILED',
-        attempts: 1,
-        last_error: waResult.error,
-        cloud_message_id: waResult.messageId,
-      });
-    } catch (err) {
-      console.error('Failed sending customer WhatsApp update', err);
-    }
-  }
-
-  orders[index] = updatedOrder;
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.ORDERS, orders);
-  }
-  memoryOrders = orders;
-  return updatedOrder;
+export async function updateOrderStatus(orderId: string, newStatus: OrderStatus, notifyWhatsApp: boolean = false): Promise<Order> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId).select().single();
+  if (error) throw error;
+  return data as unknown as Order;
 }
 
-// -----------------------------------------------------------------------------
-// WHATSAPP LOGS & RETRY
-// -----------------------------------------------------------------------------
-export async function getWhatsAppMessages(businessId: string = memoryBusiness.id): Promise<WhatsAppMessage[]> {
-  const msgs = isBrowser() ? getStored<WhatsAppMessage[]>(STORAGE_KEYS.MESSAGES, memoryMessages) : memoryMessages;
-  return [...msgs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-}
-
-export async function recordWhatsAppMessage(
-  msg: Omit<WhatsAppMessage, 'id' | 'created_at'>
-): Promise<WhatsAppMessage> {
-  const newMsg: WhatsAppMessage = {
-    id: `m_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-    created_at: new Date().toISOString(),
-    ...msg,
-  };
-
-  const list = await getWhatsAppMessages(msg.business_id);
-  const updatedList = [newMsg, ...list];
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.MESSAGES, updatedList);
-  }
-  memoryMessages = updatedList;
-  return newMsg;
-}
-
-export async function retryWhatsAppMessage(messageId: string): Promise<WhatsAppMessage> {
-  const list = await getWhatsAppMessages();
-  const index = list.findIndex((m) => m.id === messageId);
-  if (index === -1) throw new Error('Mensaje no encontrado');
-
-  const msg = list[index];
-  const business = await getBusiness(msg.business_id);
-  const settings = await getSettings(msg.business_id);
-
-  let order: Order | null = null;
-  if (msg.order_id) {
-    order = await getOrderById(msg.order_id);
-  }
-
-  if (!order) {
-    throw new Error('Pedido asociado no encontrado');
-  }
-
-  const result = await sendWhatsAppMessage({
-    business,
-    settings,
-    order,
-    eventType: msg.event_type as any,
-    target: msg.recipient_type,
-    customMessage: msg.message_text,
-  });
-
-  const updatedMsg: WhatsAppMessage = {
-    ...msg,
-    status: result.success ? 'SENT' : 'FAILED',
-    attempts: msg.attempts + 1,
-    last_error: result.error,
-    cloud_message_id: result.messageId || msg.cloud_message_id,
-  };
-
-  list[index] = updatedMsg;
-  if (isBrowser()) {
-    setStored(STORAGE_KEYS.MESSAGES, list);
-  }
-  memoryMessages = list;
-  return updatedMsg;
-}
-
-// -----------------------------------------------------------------------------
-// METRICS
-// -----------------------------------------------------------------------------
-export interface MetricsSummary {
-  todaySales: number;
-  todayOrdersCount: number;
-  averageTicket: number;
-  totalProductsCount: number;
-  pendingCount: number;
-  preparingCount: number;
-  readyCount: number;
-  deliveredCount: number;
-  topProducts: { name: string; salesCount: number; revenue: number }[];
-  salesByHour: { hour: string; count: number; total: number }[];
-  salesByDay: { day: string; dateStr: string; total: number; count: number }[];
-}
-
-export async function getMetrics(businessId: string = memoryBusiness.id): Promise<MetricsSummary> {
+// Metrics
+export async function getMetrics(businessId?: string): Promise<any> {
   const orders = await getOrders(businessId);
   const products = await getProducts(businessId);
-
+  
   const activeOrders = orders.filter((o) => o.status !== 'CANCELLED');
-
   const todayStr = new Date().toDateString();
   const todayOrders = activeOrders.filter((o) => new Date(o.created_at).toDateString() === todayStr);
 
   const todaySales = todayOrders.reduce((sum, o) => sum + o.total, 0);
   const todayOrdersCount = todayOrders.length;
-  const averageTicket = todayOrdersCount > 0 ? Math.round(todaySales / todayOrdersCount) : 0;
-
-  const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
-  const preparingCount = orders.filter((o) => o.status === 'PREPARING' || o.status === 'CONFIRMED').length;
-  const readyCount = orders.filter((o) => o.status === 'READY' || o.status === 'OUT_FOR_DELIVERY').length;
-  const deliveredCount = orders.filter((o) => o.status === 'DELIVERED').length;
-
-  // Top products
-  const productSalesMap: Record<string, { name: string; salesCount: number; revenue: number }> = {};
-  for (const order of activeOrders) {
-    for (const item of order.items) {
-      if (!productSalesMap[item.product_name]) {
-        productSalesMap[item.product_name] = {
-          name: item.product_name,
-          salesCount: 0,
-          revenue: 0,
-        };
-      }
-      productSalesMap[item.product_name].salesCount += item.quantity;
-      productSalesMap[item.product_name].revenue += item.subtotal;
-    }
-  }
-
-  const topProducts = Object.values(productSalesMap)
-    .sort((a, b) => b.salesCount - a.salesCount)
-    .slice(0, 5);
-
-  // Hourly distribution for today / recent
-  const hourlyMap: Record<number, { count: number; total: number }> = {};
-  for (let h = 11; h <= 23; h++) {
-    hourlyMap[h] = { count: 0, total: 0 };
-  }
-
-  for (const order of activeOrders) {
-    const hour = new Date(order.created_at).getHours();
-    if (hourlyMap[hour]) {
-      hourlyMap[hour].count += 1;
-      hourlyMap[hour].total += order.total;
-    }
-  }
-
-  const salesByHour = Object.entries(hourlyMap).map(([h, data]) => ({
-    hour: `${h}:00`,
-    count: data.count,
-    total: data.total,
-  }));
-
-  // Last 7 days
-  const daysMap: Record<string, { total: number; count: number }> = {};
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const now = new Date();
-
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const key = d.toDateString();
-    daysMap[key] = { total: 0, count: 0 };
-  }
-
-  for (const order of activeOrders) {
-    const key = new Date(order.created_at).toDateString();
-    if (daysMap[key]) {
-      daysMap[key].total += order.total;
-      daysMap[key].count += 1;
-    }
-  }
-
-  const salesByDay = Object.entries(daysMap).map(([dateStr, data]) => {
-    const d = new Date(dateStr);
-    return {
-      day: dayNames[d.getDay()],
-      dateStr: `${d.getDate()}/${d.getMonth() + 1}`,
-      total: data.total,
-      count: data.count,
-    };
-  });
 
   return {
     todaySales,
     todayOrdersCount,
-    averageTicket,
+    averageTicket: todayOrdersCount > 0 ? Math.round(todaySales / todayOrdersCount) : 0,
     totalProductsCount: products.filter((p) => p.is_available).length,
-    pendingCount,
-    preparingCount,
-    readyCount,
-    deliveredCount,
-    topProducts,
-    salesByHour,
-    salesByDay,
+    pendingCount: orders.filter((o) => o.status === 'PENDING').length,
+    preparingCount: orders.filter((o) => o.status === 'PREPARING' || o.status === 'CONFIRMED').length,
+    readyCount: orders.filter((o) => o.status === 'READY' || o.status === 'OUT_FOR_DELIVERY').length,
+    deliveredCount: orders.filter((o) => o.status === 'DELIVERED').length,
+    topProducts: [],
+    salesByHour: [],
+    salesByDay: [],
   };
+}
+
+export async function getWhatsAppMessages(businessId?: string): Promise<WhatsAppMessage[]> {
+  const supabase = createClient();
+  const bId = await resolveBusinessId(businessId);
+  if (!bId) return [];
+
+  const { data, error } = await supabase.from('whatsapp_messages').select('*').eq('business_id', bId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as unknown as WhatsAppMessage[];
+}
+
+export async function recordWhatsAppMessage(msg: any): Promise<WhatsAppMessage> {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('whatsapp_messages').insert([msg]).select().single();
+  if (error) throw error;
+  return data as unknown as WhatsAppMessage;
+}
+
+export async function retryWhatsAppMessage(messageId: string): Promise<WhatsAppMessage> {
+  throw new Error("Not implemented in Supabase version yet");
 }

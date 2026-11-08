@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   description: "Plataforma web de pedidos gastronómicos con WhatsApp Cloud API y Dashboard PWA",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" }
+    ],
+    apple: "/logo-icon-rounded.svg",
   },
 };
 

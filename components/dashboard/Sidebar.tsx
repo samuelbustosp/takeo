@@ -1,8 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { getBusiness } from '@/lib/data/store';
+import { Business } from '@/types';
+import { TakeoLogo } from '@/components/ui/TakeoLogo';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -13,6 +17,7 @@ import {
   Settings,
   ExternalLink,
   Store,
+  LogOut,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -27,28 +32,52 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    getBusiness().then(setBusiness);
+  }, []);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push('/login');
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  const catalogSlug = business?.slug || 'takeo-express';
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 justify-between shrink-0 h-screen sticky top-0">
+    <aside className="hidden md:flex flex-col w-64 border-r border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl p-4 justify-between shrink-0 h-screen sticky top-0 transition-colors">
       <div className="space-y-6">
-        {/* Brand */}
-        <div className="px-2 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-orange-500/20">
-              T
-            </div>
-            <div className="flex flex-col">
-              <span className="font-black text-lg tracking-tight text-zinc-900 dark:text-white leading-none">
+        {/* Brand Header */}
+        <div className="px-2 pt-1">
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <TakeoLogo
+              variant="rounded"
+              size={36}
+              animated
+              className="rounded-xl shadow-md shadow-orange-500/25 group-hover:scale-105 transition-transform duration-300 shrink-0"
+            />
+            <div className="flex flex-col min-w-0">
+              <span className="font-extrabold text-base tracking-tight text-zinc-900 dark:text-white leading-none">
                 TAKEO
               </span>
-              <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
-                Dashboard PWA
+              <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 tracking-wider uppercase mt-0.5 truncate">
+                {business?.name || 'Dashboard'}
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Navigation Links */}
+        {/* Minimal Navigation */}
         <nav className="space-y-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -60,13 +89,13 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                    ? 'bg-orange-600 text-white shadow-md shadow-orange-600/25'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-4 h-4 shrink-0 transition-transform ${isActive ? 'scale-105' : 'text-zinc-400 dark:text-zinc-500'}`} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -74,19 +103,36 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Bottom Link to Customer Web */}
-      <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+      {/* Bottom Minimal Section */}
+      <div className="pt-4 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
+        {/* Public Catalog Link with dynamic slug */}
         <Link
-          href="/takeo-express"
+          href={`/${catalogSlug}`}
           target="_blank"
-          className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 hover:text-orange-600 border border-zinc-200/70 dark:border-zinc-800 transition-colors"
+          className="group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100/70 dark:bg-zinc-900/60 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 border border-zinc-200/60 dark:border-zinc-800/70 transition-all duration-200"
         >
-          <div className="flex items-center gap-2">
-            <Store className="w-4 h-4 text-orange-500" />
-            <span>Ver Catálogo Público</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Store className="w-4 h-4 text-orange-500 shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="leading-tight font-bold">Ver Catálogo</span>
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">
+                /{catalogSlug}
+              </span>
+            </div>
           </div>
-          <ExternalLink className="w-3.5 h-3.5" />
+          <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </Link>
+
+        {/* Minimal Sign Out */}
+        <button
+          type="button"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-red-50/70 dark:hover:bg-red-950/20 transition-all cursor-pointer disabled:opacity-50"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>{signingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}</span>
+        </button>
       </div>
     </aside>
   );

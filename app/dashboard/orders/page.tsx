@@ -3,9 +3,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getOrders, updateOrderStatus } from '@/lib/data/store';
 import { Order, OrderStatus } from '@/types';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { OrderCard } from '@/components/dashboard/OrderCard';
 import { OrderDetailsModal } from '@/components/dashboard/OrderDetailsModal';
 import { OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   LayoutGrid,
   List,
@@ -18,6 +23,7 @@ import {
   PackageCheck,
   RotateCw,
   Phone,
+  Eye,
 } from 'lucide-react';
 
 const KANBAN_COLUMNS: {
@@ -88,6 +94,30 @@ export default function OrdersManagementPage() {
     };
   }, []);
 
+
+  const onDragEnd = async (result: any) => {
+    if (!result.destination) return;
+    const { source, destination, draggableId } = result;
+
+    if (source.droppableId !== destination.droppableId) {
+      const targetCol = KANBAN_COLUMNS.find((c) => c.id === destination.droppableId);
+      if (targetCol && targetCol.statuses.length > 0) {
+        const orderId = draggableId;
+        const newStatus = targetCol.statuses[0];
+        
+        // Optimistic UI update
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+
+        try {
+          await updateOrderStatus(orderId, newStatus, true);
+        } catch(e) {
+          console.error(e);
+          loadOrders();
+        }
+      }
+    }
+  };
+
   const handleAdvanceStatus = async (e: React.MouseEvent, orderId: string, nextStatus: OrderStatus) => {
     e.stopPropagation();
     try {
@@ -109,6 +139,30 @@ export default function OrdersManagementPage() {
       return matchesStatus && matchesSearch;
     });
   }, [orders, statusFilter, searchQuery]);
+
+  if (loading && orders.length === 0) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-48 h-7" />
+            <Skeleton className="w-64 h-4" />
+          </div>
+          <Skeleton className="w-28 h-9 rounded-xl" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          {[1, 2, 3, 4].map((col) => (
+            <div key={col} className="space-y-3">
+              <Skeleton className="h-9 w-full rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-2xl" />
+              <Skeleton className="h-32 w-full rounded-2xl" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -163,80 +217,101 @@ export default function OrdersManagementPage() {
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          <Input
             type="text"
             placeholder="Buscar por #pedido, cliente o teléfono..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="pl-9.5"
           />
         </div>
 
         {viewMode === 'list' && (
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full sm:w-48 text-xs sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white focus:outline-none"
-          >
-            <option value="ALL">Todos los estados</option>
-            <option value="PENDING">Pendientes</option>
-            <option value="CONFIRMED">Confirmados</option>
-            <option value="PREPARING">En Preparación</option>
-            <option value="READY">Listos</option>
-            <option value="OUT_FOR_DELIVERY">En Camino</option>
-            <option value="DELIVERED">Entregados</option>
-            <option value="CANCELLED">Cancelados</option>
-          </select>
+          <div className="w-full sm:w-48">
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">Todos los estados</option>
+              <option value="PENDING">Pendientes</option>
+              <option value="CONFIRMED">Confirmados</option>
+              <option value="PREPARING">En Preparación</option>
+              <option value="READY">Listos</option>
+              <option value="OUT_FOR_DELIVERY">En Camino</option>
+              <option value="DELIVERED">Entregados</option>
+              <option value="CANCELLED">Cancelados</option>
+            </Select>
+          </div>
         )}
       </div>
 
       {/* Kanban Board View */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
-          {KANBAN_COLUMNS.map((col) => {
-            const colOrders = filteredOrders.filter((o) => col.statuses.includes(o.status));
-            const Icon = col.icon;
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 items-start">
+            {KANBAN_COLUMNS.map((col) => {
+              const colOrders = filteredOrders.filter((o) => col.statuses.includes(o.status));
+              const Icon = col.icon;
 
-            return (
-              <div
-                key={col.id}
-                className="bg-zinc-100/70 dark:bg-zinc-900/60 rounded-3xl p-3.5 border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col gap-3 min-h-[450px]"
-              >
-                {/* Column Header */}
-                <div className="flex items-center justify-between px-2 pt-1">
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-orange-500" />
-                    <h3 className="font-extrabold text-xs uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                      {col.title}
-                    </h3>
-                  </div>
-                  <span className="w-6 h-6 rounded-full bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-bold flex items-center justify-center shadow-2xs">
-                    {colOrders.length}
-                  </span>
-                </div>
-
-                {/* Orders in this column */}
-                <div className="flex flex-col gap-3 flex-1 overflow-y-auto max-h-[70vh] pr-0.5">
-                  {colOrders.length === 0 ? (
-                    <div className="h-32 flex items-center justify-center text-center text-xs text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl">
-                      Sin pedidos
+              return (
+                <div
+                  key={col.id}
+                  className="bg-zinc-100/70 dark:bg-zinc-900/60 rounded-2xl p-3 border border-zinc-200/60 dark:border-zinc-800/60 flex flex-col gap-2.5 min-h-[450px]"
+                >
+                  <div className="flex items-center justify-between px-1.5 pt-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Icon className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                      <h3 className="font-extrabold text-[11px] uppercase tracking-wider text-zinc-700 dark:text-zinc-300 truncate">
+                        {col.title}
+                      </h3>
                     </div>
-                  ) : (
-                    colOrders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onClick={() => setSelectedOrder(order)}
-                        onAdvanceStatus={(e, next) => handleAdvanceStatus(e, order.id, next)}
-                      />
-                    ))
-                  )}
+                    <span className="w-5 h-5 rounded-full bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-bold flex items-center justify-center shadow-2xs shrink-0">
+                      {colOrders.length}
+                    </span>
+                  </div>
+
+                  <Droppable droppableId={col.id}>
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`flex flex-col gap-2.5 flex-1 overflow-y-auto max-h-[72vh] pr-0.5 rounded-xl transition-colors ${
+                          snapshot.isDraggingOver ? 'bg-orange-50/50 dark:bg-orange-900/20' : ''
+                        }`}
+                      >
+                        {colOrders.length === 0 && !snapshot.isDraggingOver && (
+                          <div className="h-32 flex items-center justify-center text-center text-xs text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-2xl">
+                            Sin pedidos
+                          </div>
+                        )}
+                        {colOrders.map((order, index) => (
+                          <Draggable key={order.id} draggableId={order.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={snapshot.isDragging ? 'opacity-90 shadow-2xl scale-[1.02] transition-transform' : ''}
+                              >
+                                <OrderCard
+                                  order={order}
+                                  onClick={() => setSelectedOrder(order)}
+                                  onAdvanceStatus={(e, next) => handleAdvanceStatus(e, order.id, next)}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
       ) : (
         /* List View */
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs overflow-hidden">
@@ -250,7 +325,7 @@ export default function OrdersManagementPage() {
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Fecha / Hora</th>
-                  <th className="px-4 py-3 text-right">Acción</th>
+                  <th className="px-4 py-3 text-right">Detalle</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -293,13 +368,15 @@ export default function OrdersManagementPage() {
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedOrder(order);
                           }}
-                          className="text-xs font-bold text-orange-600 hover:underline"
+                          title="Ver detalles completos"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/40 transition-colors"
                         >
-                          Ver
+                          <Eye className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>

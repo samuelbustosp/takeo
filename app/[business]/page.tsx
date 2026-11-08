@@ -7,6 +7,7 @@ import { CategoryTabs } from '@/components/ui/CategoryTabs';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { FloatingCartButton } from '@/components/cart/FloatingCartButton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getBusiness, getCategories, getProducts } from '@/lib/data/store';
 import { Business, Category, Product } from '@/types';
 import {
@@ -66,13 +67,49 @@ export default function BusinessCatalogPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 rounded-2xl bg-orange-500/20 text-orange-600 flex items-center justify-center animate-bounce">
-          <Sparkles className="w-6 h-6" />
+      <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
+        {/* Top bar placeholder */}
+        <div className="h-16 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-xl" />
+            <Skeleton className="w-28 h-5" />
+          </div>
+          <Skeleton className="w-24 h-9 rounded-xl" />
         </div>
-        <p className="mt-3 text-sm font-semibold text-zinc-600 dark:text-zinc-400">
-          Cargando el menú de TAKEO...
-        </p>
+
+        {/* Banner skeleton */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+          <Skeleton className="h-44 sm:h-56 w-full rounded-3xl" />
+
+          {/* Categories pills skeleton */}
+          <div className="flex items-center gap-2 overflow-x-hidden pt-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-10 w-28 rounded-xl shrink-0" />
+            ))}
+          </div>
+
+          {/* Product cards grid skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs flex gap-4"
+              >
+                <Skeleton className="w-24 h-24 rounded-xl shrink-0" />
+                <div className="flex-1 flex flex-col justify-between py-1 space-y-2">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-8 w-20 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

@@ -3,6 +3,7 @@
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --color-brand-yellow: #ffd000;
 }
 
 @layer base {
@@ -14,6 +15,7 @@
     --primary: #ff6b00;
     --primary-hover: #e05e00;
     --primary-foreground: #ffffff;
+    --brand-yellow: #ffd000;
     --secondary: #f4f2ee;
     --secondary-foreground: #27272a;
     --muted: #f4f4f5;
@@ -32,6 +34,7 @@
     --primary: #ff6b00;
     --primary-hover: #ff7d1a;
     --primary-foreground: #ffffff;
+    --brand-yellow: #ffd000;
     --secondary: #22232f;
     --secondary-foreground: #f4f4f5;
     --muted: #22232f;
@@ -79,4 +82,37 @@ body {
   50% {
     opacity: 0.5;
   }
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-flow {
+  background-size: 200% 200%;
+  animation: gradient-flow 3.5s ease infinite;
+}
+
+@keyframes draw-smile {
+  0%, 8% {
+    clip-path: inset(0 100% 0 0);
+  }
+  42%, 86% {
+    clip-path: inset(0 0% 0 0);
+  }
+  96%, 100% {
+    clip-path: inset(0 0% 0 100%);
+  }
+}
+
+.animate-logo-smile {
+  animation: draw-smile 4.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }

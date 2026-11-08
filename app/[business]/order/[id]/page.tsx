@@ -3,24 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Navbar } from '@/components/ui/Navbar';
 import { OrderStatusBadge } from '@/components/ui/OrderStatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getBusiness, getOrderById } from '@/lib/data/store';
 import { Business, Order, OrderStatus } from '@/types';
 import {
   CheckCircle2,
   Clock,
   ChefHat,
-  Bike,
   Store,
   Check,
-  Sparkles,
   MessageCircle,
-  MapPin,
-  Banknote,
-  Landmark,
-  ArrowRight,
-  ShieldCheck,
+  ArrowLeft,
 } from 'lucide-react';
 
 const STEPS: { status: OrderStatus; label: string; icon: React.ElementType }[] = [
@@ -68,9 +62,31 @@ export default function OrderTrackingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center">
-        <Sparkles className="w-8 h-8 text-orange-500 animate-spin" />
-        <p className="mt-3 text-sm text-zinc-500">Cargando estado de tu pedido...</p>
+      <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
+        <header className="h-14 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-6 flex items-center">
+          <div className="max-w-3xl mx-auto w-full flex items-center justify-between">
+            <Skeleton className="w-32 h-5" />
+            <Skeleton className="w-36 h-4" />
+          </div>
+        </header>
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 w-full space-y-6">
+          <div className="flex flex-col items-center space-y-3">
+            <Skeleton className="w-16 h-16 rounded-3xl" />
+            <Skeleton className="w-56 h-8" />
+            <Skeleton className="w-72 h-4" />
+          </div>
+          <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 space-y-6">
+            <div className="flex items-center justify-between">
+              <Skeleton className="w-40 h-6" />
+              <Skeleton className="w-24 h-6 rounded-full" />
+            </div>
+            <Skeleton className="h-16 w-full rounded-2xl" />
+            <div className="space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-1/2" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -100,9 +116,27 @@ export default function OrderTrackingPage() {
 
   return (
     <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
-      <Navbar business={business || undefined} />
+      {/* Minimal Dedicated Order Header (No Navbar) */}
+      <header className="sticky top-0 z-30 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between">
+          <Link
+            href={`/${businessSlug}`}
+            className="inline-flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a {business?.name || 'la tienda'}</span>
+          </Link>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 w-full space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Seguimiento en vivo · #{order.order_number}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 flex-1 w-full space-y-6">
         {/* Success Header */}
         <div className="text-center space-y-2">
           <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10 animate-in zoom-in-50 duration-300">

@@ -19,6 +19,7 @@ export type WhatsAppMsgStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
 
 export interface Business {
   id: string;
+  user_id?: string;
   slug: string;
   name: string;
   tagline: string;

@@ -3,111 +3,481 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/ui/Navbar';
+import { EmpanadaScrollScrubber } from '@/components/ui/EmpanadaScrollScrubber';
+import { TakeoLogo } from '@/components/ui/TakeoLogo';
 import { getBusiness } from '@/lib/data/store';
 import { Business } from '@/types';
 import {
-  Utensils,
   LayoutDashboard,
-  Sparkles,
-  ArrowRight,
-  Flame,
-  Clock,
-  ShieldCheck,
   Smartphone,
   MessageCircle,
+  ArrowRight,
+  CheckCircle2,
+  Zap,
+  QrCode,
+  Sparkles,
+  Store,
+  Clock,
+  Flame,
 } from 'lucide-react';
+
+const KANBAN_COLUMNS = [
+  {
+    id: 0,
+    title: 'Nuevos',
+    dotClass: 'bg-amber-400',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    statusText: 'Recibido · Hace instantes',
+    ghostItem: { id: '#105', desc: '2x Docena Surtida', mode: 'Retiro' },
+  },
+  {
+    id: 1,
+    title: 'En preparación',
+    dotClass: 'bg-orange-500',
+    badgeClass: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+    statusText: 'En horno · Aviso enviado',
+    ghostItem: { id: '#102', desc: '4x Carne a Cuchillo', mode: 'Delivery' },
+  },
+  {
+    id: 2,
+    title: 'Listos',
+    dotClass: 'bg-emerald-400',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    statusText: 'En camino · Cliente notificado',
+    ghostItem: { id: '#101', desc: '1x Promo Familiar', mode: 'Delivery' },
+  },
+];
+
+const WHATSAPP_MESSAGES = [
+  {
+    id: 1,
+    text: 'Tu pedido #104 fue confirmado',
+    emoji: '/emojis/ios-check.png',
+    emojiAlt: '✅',
+    emojiPosition: 'after' as const,
+    time: '20:30',
+  },
+  {
+    id: 2,
+    text: 'Tu pedido entró a la cocina',
+    emoji: '/emojis/ios-chef.png',
+    emojiAlt: '👨‍🍳',
+    emojiPosition: 'before' as const,
+    time: '20:38',
+  },
+  {
+    id: 3,
+    text: 'Tu pedido va en camino a tu casa',
+    emoji: '/emojis/ios-scooter.png',
+    emojiAlt: '🛵',
+    emojiPosition: 'before' as const,
+    time: '20:51',
+  },
+];
 
 export default function RootHomePage() {
   const [business, setBusiness] = useState<Business | null>(null);
+  const [activeKanbanStep, setActiveKanbanStep] = useState<number>(0);
+  const [wppStep, setWppStep] = useState<number>(1);
 
   useEffect(() => {
     getBusiness('takeo-express').then(setBusiness);
   }, []);
 
+  // Auto-cycle the animated order across the 3 Kanban columns
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveKanbanStep((prev) => (prev + 1) % 3);
+    }, 2400);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-cycle WhatsApp incoming notification bubbles sequentially
+  useEffect(() => {
+    const sequence = [
+      { step: 1, delay: 2400 },
+      { step: 2, delay: 2400 },
+      { step: 3, delay: 3800 },
+    ];
+    let currentIndex = 0;
+    let timeoutId: NodeJS.Timeout;
+
+    const runNext = () => {
+      currentIndex = (currentIndex + 1) % sequence.length;
+      setWppStep(sequence[currentIndex].step);
+      timeoutId = setTimeout(runNext, sequence[currentIndex].delay);
+    };
+
+    timeoutId = setTimeout(runNext, sequence[0].delay);
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
-      <Navbar business={business || undefined} />
+      <Navbar />
 
-      <main className="flex-1 flex flex-col justify-center max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 w-full">
-        {/* Hero Section */}
-        <div className="text-center space-y-5 max-w-3xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-orange-100 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800/40 text-orange-600 dark:text-orange-400 text-xs font-bold px-4 py-1.5 rounded-full shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>TAKEO 2026 — Plataforma Gastronómica Moderna</span>
-          </div>
+      <main className="flex-1 flex flex-col w-full">
+        {/* Full-bleed Hero + Scroll-Driven Image Sequence Scrubbing */}
+        <EmpanadaScrollScrubber />
 
-          <h1 className="text-4xl sm:text-6xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
-            Pedí. Listo.{' '}
-            <span className="bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
-              Sin fricción.
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-            Catálogo digital ultra rápido para tus clientes con pedidos automatizados a WhatsApp y Dashboard PWA para el control total de tu cocina.
-          </p>
-
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
-            <Link
-              href="/takeo-express"
-              className="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm sm:text-base px-6 py-3.5 rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            >
-              <Utensils className="w-4 h-4" />
-              <span>Ver Menú Online (Cliente)</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="w-full sm:w-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-sm sm:text-base px-6 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
-            >
-              <LayoutDashboard className="w-4 h-4 text-orange-600" />
-              <span>Abrir Dashboard PWA</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 sm:mt-24">
-          <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 flex items-center justify-center">
-              <Smartphone className="w-5 h-5" />
+        {/* Modern Bento Section */}
+        <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-28 w-full">
+          {/* Section Header */}
+          <div className="max-w-2xl mb-10 sm:mb-14 space-y-3">
+            <div className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400">
+              ////
+              <span>DISEÑADO PARA GASTRONÓMICOS</span>
             </div>
-            <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-              Experiencia Web para Clientes
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-              Sin descargas obligatorias. Abre en segundos desde QR, Instagram o link de WhatsApp con carrito y checkout optimizado.
-            </p>
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-zinc-900 dark:text-white tracking-tight leading-[1.1]">
+              Tu propio canal de ventas.{' '}
+              <span className="inline-block font-extrabold tracking-tight bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent">
+                Sin intermediarios.
+              </span>
+            </h2>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
-              <MessageCircle className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-              WhatsApp Cloud API Integrado
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-              Recepción automática del pedido en el WhatsApp del negocio y avisos al cliente cuando el pedido está confirmado o listo.
-            </p>
-          </div>
+          {/* Bento Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+            {/* Card 1: Large Feature — Menú Web Instantáneo */}
+            <div className="lg:col-span-7 group relative overflow-hidden rounded-3xl bg-white dark:bg-[#14161f] border border-zinc-200/80 dark:border-zinc-800/80 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-7 sm:gap-8 shadow-xs hover:border-orange-500/40 transition-all duration-300">
+              <div className="space-y-4 w-full">
+                {/* Unified Card Header */}
+                <div className="w-full flex items-center justify-between">
+                  <div className="w-11 h-11 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                    01 · WEB CLIENTE
+                  </span>
+                </div>
 
-          <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center">
-              <LayoutDashboard className="w-5 h-5" />
+                <div className="space-y-2 max-w-md">
+                  <h3 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+                    Abre al instante desde{' '}
+                    <span className="font-bold text-orange-600 dark:text-orange-400">
+                      Instagram o QR
+                    </span>
+                  </h3>
+                  <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Sin descargas ni registros. Tus clientes ven fotos reales, eligen variantes y confirman su compra en segundos.
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive-style Mini UI Preview */}
+              <div className="rounded-2xl bg-[#faf9f6] dark:bg-[#0d0e12] border border-zinc-200/80 dark:border-zinc-800/80 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-bold text-lg flex items-center justify-center shadow-md shadow-orange-500/20">
+                    <QrCode className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="font-mono text-sm font-bold text-zinc-900 dark:text-white">
+                      takeo.app/tu-local
+                    </div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Link directo para tu bio y mesas
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-              Dashboard PWA para el Negocio
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-500 leading-relaxed">
-              Instalable como app en celular, tablet o PC. Tablero Kanban de pedidos, métricas de ventas y control de stock en tiempo real.
-            </p>
+
+            {/* Card 2: Olvidate de tomar pedidos por WhatsApp */}
+            <div className="lg:col-span-5 group relative overflow-hidden rounded-3xl bg-white dark:bg-[#14161f] border border-zinc-200/80 dark:border-zinc-800/80 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-2 sm:gap-3 shadow-xs hover:border-emerald-500/40 transition-all duration-300">
+              <div className="space-y-4 w-full">
+                {/* Unified Card Header with Notification Badge */}
+                <div className="w-full flex items-center justify-between">
+                  <div className="relative w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <MessageCircle className="w-5 h-5" />
+                    {/* Pulsing Red Notification Circle with White "1" */}
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[10px] font-extrabold text-white items-center justify-center shadow-xs">
+                        1
+                      </span>
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                    02 · ESTADOS EN VIVO
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+                    Olvidate de tomar pedidos{' '}
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      por WhatsApp
+                    </span>
+                  </h3>
+                  <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    El cliente pide en la web y recibe cada estado al instante, sin responder chats.
+                  </p>
+                </div>
+              </div>
+
+              {/* Compact WhatsApp Simulated Message Stream */}
+              <div className="rounded-2xl bg-zinc-50/90 dark:bg-[#0c1317] border border-emerald-500/20 p-3 sm:p-2.5 space-y-3">
+                {/* WhatsApp Chat mini-header */}
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-zinc-800/80">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[9px] shadow-xs">
+                        T
+                      </div>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white dark:border-[#0c1317] absolute -bottom-0.5 -right-0.5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100 text-[11px] leading-none">
+                          Takeo
+                        </span>
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500 fill-emerald-500/20" />
+                      </div>
+                      <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium leading-tight">
+                        en línea
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Messages stream: slender compact bubbles */}
+                <div className="space-y-1 min-h-[110px] flex flex-col justify-start">
+                  {WHATSAPP_MESSAGES.slice(0, wppStep).map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="animate-in fade-in slide-in-from-bottom-1.5 duration-250 flex items-start"
+                    >
+                      <div className="relative w-fit max-w-[94%] rounded-xl rounded-tl-xs px-2.5 py-1.5 bg-white dark:bg-[#1f2c34] text-zinc-900 dark:text-zinc-100 border border-zinc-200/70 dark:border-zinc-700/60 shadow-xs text-[11px] sm:text-xs flex items-baseline gap-2">
+                        <span className="font-medium text-zinc-800 dark:text-zinc-100 inline-flex items-center gap-1">
+                          {msg.emojiPosition === 'before' && (
+                            <img
+                              src={msg.emoji}
+                              alt={msg.emojiAlt}
+                              className="w-3.5 h-3.5 inline-block shrink-0"
+                            />
+                          )}
+                          <span>{msg.text}</span>
+                          {msg.emojiPosition === 'after' && (
+                            <img
+                              src={msg.emoji}
+                              alt={msg.emojiAlt}
+                              className="w-3.5 h-3.5 inline-block shrink-0"
+                            />
+                          )}
+                        </span>
+                        <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] text-zinc-400 dark:text-zinc-400 ml-auto">
+                          <span>{msg.time}</span>
+                          <span className="text-emerald-500 dark:text-emerald-400 font-bold text-[10px] leading-none">✓✓</span>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {wppStep < 3 && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] text-zinc-400 dark:text-zinc-500 italic animate-pulse">
+                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-bounce" />
+                      <span>Escribiendo...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Full-Width Bottom Bento — Animated Mini Kanban Showcase */}
+            <div className="lg:col-span-12 relative overflow-hidden rounded-3xl bg-zinc-900 dark:bg-[#14161f] border border-zinc-800 p-6 sm:p-8 lg:p-10 flex flex-col gap-7 sm:gap-8 text-white">
+              {/* Unified Card Header (matching 01 and 02) */}
+              <div className="w-full flex items-center justify-between">
+                <div className="w-11 h-11 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
+                  <LayoutDashboard className="w-5 h-5" />
+                </div>
+                <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+                  03 · TABLERO DE COCINA
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 sm:gap-8 items-center">
+                {/* Left Description + CTA */}
+                <div className="lg:col-span-5 space-y-4 sm:space-y-5">
+                  <h3 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+                    Control total de tu cocina{' '}
+                    <span className="font-bold text-orange-400">
+                      en vivo.
+                    </span>
+                  </h3>
+
+                  <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
+                    Visualizá y mové cada comanda en tiempo real. Cada cambio de columna actualiza el estado del pedido y notifica al cliente al instante.
+                  </p>
+
+                  <div className="pt-1 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/register"
+                      className="group bg-gradient-to-r from-orange-600 via-amber-500 to-orange-600 animate-gradient-flow text-white font-extrabold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-orange-600/30 flex items-center gap-2 transition-transform hover:scale-[1.02]"
+                    >
+                      <Store className="w-4 h-4" />
+                      <span>Crear mi Tienda</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Right Animated Mini Kanban Board */}
+                <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  {KANBAN_COLUMNS.map((col, colIdx) => {
+                    const isActiveCol = activeKanbanStep === colIdx;
+
+                    return (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => setActiveKanbanStep(colIdx)}
+                        className={`text-left rounded-2xl p-3.5 border transition-all duration-500 flex flex-col gap-3 cursor-pointer ${
+                          isActiveCol
+                            ? 'bg-white/[0.07] border-orange-500/50 shadow-lg shadow-black/30'
+                            : 'bg-white/[0.03] border-white/10 opacity-75 hover:opacity-100'
+                        }`}
+                      >
+                        {/* Column Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-2 h-2 rounded-full ${col.dotClass} ${
+                                isActiveCol ? 'animate-pulse' : ''
+                              }`}
+                            />
+                            <span className="text-xs font-extrabold tracking-tight text-zinc-200">
+                              {col.title}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-zinc-300">
+                            {isActiveCol ? 2 : 1}
+                          </span>
+                        </div>
+
+                        {/* Animated Active Order Card (#104) */}
+                        <div
+                          className={`rounded-xl border transition-all duration-500 overflow-hidden ${
+                            isActiveCol
+                              ? 'max-h-40 opacity-100 scale-100 p-3 bg-zinc-950/90 border-orange-500/40 shadow-md'
+                              : 'max-h-0 opacity-0 scale-95 p-0 border-transparent pointer-events-none'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-mono text-xs font-extrabold text-orange-400">
+                              #104
+                            </span>
+                            <span className="inline-flex items-center gap-1 font-mono text-[10px] text-zinc-400">
+                              <Flame className="w-3 h-3 text-orange-500" />
+                              6x Empanadas
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-white mb-2">
+                            Carne Cortada a Cuchillo
+                          </div>
+                          <div
+                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${col.badgeClass}`}
+                          >
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{col.statusText}</span>
+                          </div>
+                        </div>
+
+                        {/* Background Static Order Card for Realism */}
+                        <div className="rounded-xl p-3 bg-white/[0.03] border border-white/5 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[11px] font-bold text-zinc-400">
+                              {col.ghostItem.id}
+                            </span>
+                            <span className="font-mono text-[10px] text-zinc-500">
+                              {col.ghostItem.mode}
+                            </span>
+                          </div>
+                          <div className="text-xs font-medium text-zinc-300 truncate">
+                            {col.ghostItem.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
+
+      {/* Clean Footer with Animated TakeoLogo & Explorar */}
+      <footer className="relative overflow-hidden border-t border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-[#090a0d] py-14 sm:py-16">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 pb-12 border-b border-zinc-200/70 dark:border-zinc-800/70">
+            {/* Brand Column with Animated Smile Logo */}
+            <div className="space-y-4 max-w-sm">
+              <Link href="/" className="inline-flex items-center gap-3.5 group">
+                <TakeoLogo
+                  variant="rounded"
+                  size={48}
+                  animated
+                  className="rounded-2xl shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="flex flex-col">
+                  <span className="font-extrabold text-xl tracking-tight text-zinc-900 dark:text-white leading-none">
+                    TAKEO
+                  </span>
+                  <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 tracking-wide mt-1">
+                    Pedí. Listo.
+                  </span>
+                </div>
+              </Link>
+
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                El sistema de pedidos web para locales gastronómicos que quieren vender directo, ordenar su cocina y quedarse con el 100% de cada venta.
+              </p>
+            </div>
+
+            {/* Explorar Links */}
+            <div className="space-y-3">
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500 block">
+                EXPLORAR
+              </span>
+              <ul className="flex flex-wrap items-center gap-6 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                <li>
+                  <Link
+                    href="/register"
+                    className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <span>Crear mi tienda</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-orange-500" />
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/takeo-express"
+                    className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                  >
+                    Ver menú demo en vivo
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/login"
+                    className="hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                  >
+                    Acceso para dueños
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Copyright Bar */}
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400 dark:text-zinc-500">
+            <span>© {new Date().getFullYear()} TAKEO. Todos los derechos reservados.</span>
+            <span className="font-mono text-[11px]">
+              Hecho para dueños gastronómicos · Pedí. Listo.
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

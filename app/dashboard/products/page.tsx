@@ -2,7 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { getProducts, getCategories, createProduct, updateProduct, deleteProduct } from '@/lib/data/store';
+import { compressAndUploadImage } from '@/lib/utils/image-compression';
 import { Product, Category } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   Search,
@@ -23,10 +31,13 @@ export default function ProductsManagementPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Create / Edit modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     category_id: '',
@@ -54,8 +65,24 @@ export default function ProductsManagementPage() {
     loadData();
   }, []);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const { url, error } = await compressAndUploadImage(file, 'public-assets', 'products');
+    setUploadingImage(false);
+
+    if (url) {
+      setFormData({ ...formData, image_url: url });
+    } else {
+      alert('Error uploading image: ' + error);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingProduct(null);
+    setFormError(null);
     setFormData({
       name: '',
       category_id: categories[0]?.id || '',
@@ -71,6 +98,7 @@ export default function ProductsManagementPage() {
 
   const handleOpenEdit = (p: Product) => {
     setEditingProduct(p);
+    setFormError(null);
     setFormData({
       name: p.name,
       category_id: p.category_id || '',
@@ -95,11 +123,13 @@ export default function ProductsManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
+    setFormError(null);
     try {
       if (editingProduct) {
         await updateProduct(editingProduct.id, {
           name: formData.name,
-          category_id: formData.category_id,
+          category_id: formData.category_id || undefined,
           price: Number(formData.price),
           compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : null,
           description: formData.description,
@@ -110,7 +140,7 @@ export default function ProductsManagementPage() {
       } else {
         await createProduct({
           name: formData.name,
-          category_id: formData.category_id,
+          category_id: formData.category_id || undefined,
           price: Number(formData.price),
           compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : null,
           description: formData.description,
@@ -121,8 +151,11 @@ export default function ProductsManagementPage() {
       }
       setIsModalOpen(false);
       loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setFormError(err?.message || 'Error al guardar el producto');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -144,6 +177,39 @@ export default function ProductsManagementPage() {
     });
   }, [products, selectedCategory, searchQuery]);
 
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-48 h-7" />
+            <Skeleton className="w-72 h-4" />
+          </div>
+          <Skeleton className="w-36 h-10 rounded-xl" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="flex-1 h-10 rounded-xl" />
+          <Skeleton className="w-48 h-10 rounded-xl" />
+        </div>
+        <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden bg-white dark:bg-zinc-900 p-4 space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-12 h-12 rounded-xl shrink-0" />
+                <div className="space-y-1.5">
+                  <Skeleton className="w-36 h-4" />
+                  <Skeleton className="w-24 h-3" />
+                </div>
+              </div>
+              <Skeleton className="w-20 h-6 rounded-full" />
+              <Skeleton className="w-16 h-5" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -157,40 +223,41 @@ export default function ProductsManagementPage() {
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleOpenCreate}
-          className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md shadow-orange-600/20 flex items-center justify-center gap-2 transition-all"
+          className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           <span>Nuevo Producto</span>
-        </button>
+        </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          <Input
             type="text"
             placeholder="Buscar por nombre o descripción..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2.5 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="pl-9.5"
           />
         </div>
 
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full sm:w-56 text-xs sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white focus:outline-none"
-        >
-          <option value="ALL">Todas las categorías</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div className="w-full sm:w-56">
+          <Select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="ALL">Todas las categorías</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {/* Products Table */}
@@ -314,116 +381,126 @@ export default function ProductsManagementPage() {
               </button>
             </div>
 
+            {formError && (
+              <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium">
+                {formError}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <Label htmlFor="prod-name" className="mb-1 block">
                   Nombre del plato/producto *
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="prod-name"
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej: Empanada de Carne Cortada a Cuchillo"
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  <Label htmlFor="prod-cat" className="mb-1 block">
                     Categoría
-                  </label>
-                  <select
+                  </Label>
+                  <Select
+                    id="prod-cat"
                     value={formData.category_id}
                     onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  <Label htmlFor="prod-price" className="mb-1 block">
                     Precio ($) *
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="prod-price"
                     type="number"
                     required
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     placeholder="2100"
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <Label htmlFor="prod-desc" className="mb-1 block">
                   Descripción
-                </label>
-                <textarea
+                </Label>
+                <Textarea
+                  id="prod-desc"
                   rows={2}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Ingredientes, elaboración, detalles..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  URL de Imagen (Unsplash / Web)
-                </label>
-                <input
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
+                <Label htmlFor="prod-image" className="mb-1 block">
+                  Imagen del producto
+                </Label>
+                <div className="flex items-center gap-4">
+                  {formData.image_url && (
+                    <img src={formData.image_url} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-zinc-200 dark:border-zinc-800" />
+                  )}
+                  <div className="flex-1">
+                    <Input
+                      id="prod-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                    />
+                    {uploadingImage && <p className="text-xs text-orange-500 mt-1 font-medium">Subiendo y comprimiendo imagen...</p>}
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-6 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <Checkbox
                     checked={formData.is_available}
-                    onChange={(e) => setFormData({ ...formData, is_available: e.target.checked })}
-                    className="rounded text-orange-600 focus:ring-orange-500"
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_available: !!checked })}
                   />
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Disponible para pedir</span>
+                  <span>Disponible para pedir</span>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <Checkbox
                     checked={formData.is_featured}
-                    onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                    className="rounded text-orange-600 focus:ring-orange-500"
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_featured: !!checked })}
                   />
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Destacar en portada</span>
+                  <span>Destacar en portada</span>
                 </label>
               </div>
 
               <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-md shadow-orange-600/20"
+                  disabled={saving}
                 >
-                  Guardar
-                </button>
+                  {saving ? 'Guardando...' : editingProduct ? 'Actualizar' : 'Crear Producto'}
+                </Button>
               </div>
             </form>
           </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getMetrics, getOrders } from '@/lib/data/store';
 import { MetricsSummary, Order } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart3,
   TrendingUp,
@@ -36,9 +37,20 @@ export default function MetricsPage() {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-zinc-400">
-        <Sparkles className="w-8 h-8 mx-auto mb-2 text-orange-500 animate-spin" />
-        <p className="text-xs">Calculando métricas del negocio...</p>
+      <div className="space-y-8 animate-in fade-in duration-200">
+        <div className="space-y-2">
+          <Skeleton className="w-48 h-7" />
+          <Skeleton className="w-72 h-4" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
       </div>
     );
   }

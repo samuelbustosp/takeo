@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="112" fill="#FF6B00"/>
+  <!-- Pure White T with App-Icon Safe Margins (~25% side margins) -->
+  <path d="M 144 98 L 368 98 A 18 18 0 0 1 386 116 L 386 138 A 18 18 0 0 1 368 156 L 299 156 A 14 14 0 0 0 285 170 L 285 306 A 14 14 0 0 1 271 320 L 241 320 A 14 14 0 0 1 227 306 L 227 170 A 14 14 0 0 0 213 156 L 144 156 A 18 18 0 0 1 126 138 L 126 116 A 18 18 0 0 1 144 98 Z" fill="#FFFFFF"/>
+  <!-- Warm Golden Yellow Smile (slightly thicker downward) -->
+  <path d="M 143 406 Q 256 270 369 406 A 6 6 0 0 1 364 414 Q 256 338 148 414 A 6 6 0 0 1 143 406 Z" fill="#FFD000"/>
+</svg>

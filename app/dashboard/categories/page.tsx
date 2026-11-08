@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/lib/data/store';
 import { Category } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   Edit2,
@@ -26,6 +32,8 @@ export default function CategoriesManagementPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -51,6 +59,7 @@ export default function CategoriesManagementPage() {
 
   const handleOpenCreate = () => {
     setEditingCat(null);
+    setFormError(null);
     setFormData({
       name: '',
       description: '',
@@ -63,6 +72,7 @@ export default function CategoriesManagementPage() {
 
   const handleOpenEdit = (c: Category) => {
     setEditingCat(c);
+    setFormError(null);
     setFormData({
       name: c.name,
       description: c.description || '',
@@ -75,6 +85,8 @@ export default function CategoriesManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
+    setFormError(null);
     try {
       if (editingCat) {
         await updateCategory(editingCat.id, formData);
@@ -83,8 +95,11 @@ export default function CategoriesManagementPage() {
       }
       setIsModalOpen(false);
       loadData();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setFormError(err?.message || 'Error al guardar la categoría');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -94,6 +109,34 @@ export default function CategoriesManagementPage() {
       loadData();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-48 h-7" />
+            <Skeleton className="w-64 h-4" />
+          </div>
+          <Skeleton className="w-36 h-10 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 space-y-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="w-28 h-5" />
+                  <Skeleton className="w-16 h-3" />
+                </div>
+              </div>
+              <Skeleton className="w-full h-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -108,13 +151,13 @@ export default function CategoriesManagementPage() {
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleOpenCreate}
-          className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md shadow-orange-600/20 flex items-center justify-center gap-2 transition-all"
+          className="flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           <span>Nueva Categoría</span>
-        </button>
+        </Button>
       </div>
 
       {/* Grid of Categories */}
@@ -155,18 +198,22 @@ export default function CategoriesManagementPage() {
             )}
 
             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleOpenEdit(cat)}
-                className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-orange-600 px-2.5 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-orange-600"
               >
                 Editar
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleDelete(cat.id)}
-                className="text-xs font-semibold text-rose-500 hover:text-rose-700 px-2.5 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                className="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
               >
                 Eliminar
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -186,83 +233,87 @@ export default function CategoriesManagementPage() {
               </button>
             </div>
 
+            {formError && (
+              <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium">
+                {formError}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Nombre *</label>
-                <input
+                <Label htmlFor="cat-name" className="mb-1 block">Nombre *</Label>
+                <Input
+                  id="cat-name"
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ej: Empanadas Especiales"
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Descripción</label>
-                <input
+                <Label htmlFor="cat-desc" className="mb-1 block">Descripción</Label>
+                <Input
+                  id="cat-desc"
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Breve detalle sobre la sección"
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Orden</label>
-                  <input
+                  <Label htmlFor="cat-order" className="mb-1 block">Orden</Label>
+                  <Input
+                    id="cat-order"
                     type="number"
                     value={formData.display_order}
                     onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Icono</label>
-                  <select
+                  <Label htmlFor="cat-icon" className="mb-1 block">Icono</Label>
+                  <Select
+                    id="cat-icon"
                     value={formData.icon}
                     onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none"
                   >
                     {ICONS.map((i) => (
                       <option key={i} value={i}>
                         {i}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               <div className="pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <Checkbox
                     checked={formData.is_active}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="rounded text-orange-600 focus:ring-orange-500"
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: !!checked })}
                   />
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Mostrar en el catálogo</span>
+                  <span>Mostrar en el catálogo</span>
                 </label>
               </div>
 
               <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-zinc-600 font-semibold"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold"
+                  disabled={saving}
                 >
-                  Guardar
-                </button>
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </Button>
               </div>
             </form>
           </div>

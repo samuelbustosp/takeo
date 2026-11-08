@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getMetrics, getOrders, updateOrderStatus } from '@/lib/data/store';
-import { MetricsSummary, Order, OrderStatus } from '@/types';
+import { getMetrics, getOrders, updateOrderStatus, getBusiness } from '@/lib/data/store';
+import { MetricsSummary, Order, OrderStatus, Business } from '@/types';
 import { OrderCard } from '@/components/dashboard/OrderCard';
 import { OrderDetailsModal } from '@/components/dashboard/OrderDetailsModal';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   TrendingUp,
   ShoppingBag,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardOverviewPage() {
+  const [business, setBusiness] = useState<Business | null>(null);
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -25,9 +27,10 @@ export default function DashboardOverviewPage() {
 
   const loadData = async () => {
     try {
-      const [m, ords] = await Promise.all([getMetrics(), getOrders()]);
+      const [m, ords, b] = await Promise.all([getMetrics(), getOrders(), getBusiness()]);
       setMetrics(m);
       setOrders(ords);
+      setBusiness(b);
     } catch (e) {
       console.error(e);
     } finally {
@@ -61,9 +64,24 @@ export default function DashboardOverviewPage() {
 
   if (loading) {
     return (
-      <div className="py-16 text-center text-zinc-400">
-        <Sparkles className="w-8 h-8 mx-auto mb-2 text-orange-500 animate-spin" />
-        <p className="text-xs">Cargando métricas y pedidos en vivo...</p>
+      <div className="space-y-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 space-y-3">
+              <Skeleton className="w-8 h-8 rounded-xl" />
+              <Skeleton className="w-20 h-4" />
+              <Skeleton className="w-28 h-7" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="w-48 h-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-44 rounded-2xl" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -72,6 +90,29 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-8">
+      {/* Onboarding Alert Banner if business is missing or incomplete */}
+      {(!business || !business.phone_whatsapp || business.address === 'Dirección pendiente') && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Completá la información de tu local</h4>
+              <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-0.5">
+                Configurá el WhatsApp de recepción de pedidos y la dirección física para habilitar tu catálogo digital.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/settings"
+            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 text-center"
+          >
+            Configurar mi Local →
+          </Link>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {/* Sales Today */}

@@ -4,6 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/ui/Navbar';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCart } from '@/context/CartContext';
 import { getBusiness, createOrder, validateDiscountCode } from '@/lib/data/store';
 import { Business, DeliveryType, PaymentMethod } from '@/types';
@@ -122,6 +127,7 @@ export default function CheckoutPage() {
 
       const created = await createOrder({
         businessId: business.id,
+        businessSlug: business.slug,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         deliveryType,
@@ -160,9 +166,27 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center">
-        <Sparkles className="w-8 h-8 text-orange-500 animate-spin" />
-        <p className="mt-3 text-sm text-zinc-500">Cargando checkout...</p>
+      <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
+        <div className="h-16 w-full border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between">
+          <Skeleton className="w-28 h-6" />
+        </div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex-1 w-full space-y-6">
+          <Skeleton className="w-32 h-4" />
+          <div className="space-y-2">
+            <Skeleton className="w-56 h-8" />
+            <Skeleton className="w-72 h-4" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
+            <div className="lg:col-span-7 space-y-5">
+              <Skeleton className="h-32 w-full rounded-2xl" />
+              <Skeleton className="h-36 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-2xl" />
+            </div>
+            <div className="lg:col-span-5">
+              <Skeleton className="h-72 w-full rounded-2xl" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -239,29 +263,25 @@ export default function CheckoutPage() {
               {deliveryType === 'DELIVERY' && (
                 <div className="mt-4 space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 animate-in fade-in duration-200">
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                      Dirección de entrega *
-                    </label>
-                    <input
+                    <Label htmlFor="delivery-addr" className="mb-1 block">Dirección de entrega *</Label>
+                    <Input
+                      id="delivery-addr"
                       type="text"
                       placeholder="Ej: Av. Santa Fe 3200, Piso 4 Depto B"
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
                       required
-                      className="w-full text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                      Aclaraciones o timbre (opcional)
-                    </label>
-                    <input
+                    <Label htmlFor="delivery-notes" className="mb-1 block">Aclaraciones o timbre (opcional)</Label>
+                    <Input
+                      id="delivery-notes"
                       type="text"
                       placeholder="Ej: Timbre no funciona, llamar al llegar"
                       value={deliveryNotes}
                       onChange={(e) => setDeliveryNotes(e.target.value)}
-                      className="w-full text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -276,30 +296,26 @@ export default function CheckoutPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Tu Nombre *
-                  </label>
-                  <input
+                  <Label htmlFor="cust-name" className="mb-1 block">Tu Nombre *</Label>
+                  <Input
+                    id="cust-name"
                     type="text"
                     placeholder="Ej: Juan Pérez"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     required
-                    className="w-full text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Teléfono / WhatsApp *
-                  </label>
-                  <input
+                  <Label htmlFor="cust-phone" className="mb-1 block">Teléfono / WhatsApp *</Label>
+                  <Input
+                    id="cust-phone"
                     type="tel"
                     placeholder="Ej: 11 5566 7788"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     required
-                    className="w-full text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -353,12 +369,11 @@ export default function CheckoutPage() {
               <h2 className="font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">
                 4. Observaciones para la cocina
               </h2>
-              <textarea
+              <Textarea
                 rows={2}
                 placeholder="Ej: Sin sal, empanadas bien calientes, condimentos extra..."
                 value={orderNotes}
                 onChange={(e) => setOrderNotes(e.target.value)}
-                className="w-full text-xs sm:text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none resize-none"
               />
             </div>
           </div>

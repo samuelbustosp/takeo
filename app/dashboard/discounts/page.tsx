@@ -3,6 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { getDiscounts, createDiscount, updateDiscount } from '@/lib/data/store';
 import { Discount, DiscountType } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
   Tag,
@@ -11,8 +16,6 @@ import {
   CheckCircle2,
   X,
   Sparkles,
-  ToggleLeft,
-  ToggleRight,
 } from 'lucide-react';
 
 export default function DiscountsManagementPage() {
@@ -71,6 +74,32 @@ export default function DiscountsManagementPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="w-48 h-7" />
+            <Skeleton className="w-64 h-4" />
+          </div>
+          <Skeleton className="w-36 h-10 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 space-y-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="w-24 h-6" />
+                <Skeleton className="w-16 h-5 rounded-full" />
+              </div>
+              <Skeleton className="w-32 h-7" />
+              <Skeleton className="w-full h-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -84,7 +113,7 @@ export default function DiscountsManagementPage() {
           </p>
         </div>
 
-        <button
+        <Button
           onClick={() => {
             setFormData({
               code: '',
@@ -96,11 +125,11 @@ export default function DiscountsManagementPage() {
             });
             setIsModalOpen(true);
           }}
-          className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md shadow-orange-600/20 flex items-center justify-center gap-2 transition-all"
+          className="flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           <span>Nuevo Cupón</span>
-        </button>
+        </Button>
       </div>
 
       {/* Grid of Discounts */}
@@ -170,84 +199,84 @@ export default function DiscountsManagementPage() {
 
             <form onSubmit={handleCreate} className="space-y-3.5 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <Label htmlFor="disc-code" className="mb-1 block">
                   Código del Cupón *
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="disc-code"
                   type="text"
                   required
                   placeholder="Ej: BIENVENIDA25"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full uppercase font-mono bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="uppercase font-mono"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Título descriptivo</label>
-                <input
+                <Label htmlFor="disc-title" className="mb-1 block">Título descriptivo</Label>
+                <Input
+                  id="disc-title"
                   type="text"
                   required
                   placeholder="Ej: 25% de descuento por apertura"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Tipo</label>
-                  <select
+                  <Label htmlFor="disc-type" className="mb-1 block">Tipo</Label>
+                  <Select
+                    id="disc-type"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value as DiscountType })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none"
                   >
                     <option value="PERCENTAGE">Porcentaje (%)</option>
                     <option value="FIXED">Monto Fijo ($)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  <Label htmlFor="disc-val" className="mb-1 block">
                     Valor {formData.type === 'PERCENTAGE' ? '(%)' : '($)'} *
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="disc-val"
                     type="number"
                     required
                     value={formData.value}
                     onChange={(e) => setFormData({ ...formData, value: Number(e.target.value) })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                <Label htmlFor="disc-min" className="mb-1 block">
                   Monto Mínimo de Pedido ($)
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="disc-min"
                   type="number"
                   value={formData.min_order_amount}
                   onChange={(e) => setFormData({ ...formData, min_order_amount: Number(e.target.value) })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none"
                 />
               </div>
 
               <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-zinc-600 font-semibold"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold"
                 >
                   Crear Cupón
-                </button>
+                </Button>
               </div>
             </form>
           </div>
