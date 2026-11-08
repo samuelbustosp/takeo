@@ -195,6 +195,11 @@ export function EmpanadaScrollScrubber() {
   const currentBeatIdx =
     activeBeatIndex === -1 ? STORY_BEATS.length - 1 : activeBeatIndex;
 
+  // Subtle steam intensity that peaks gently while the empanada opens during scroll
+  const steamIntensity = isReady
+    ? 0.35 + Math.sin(Math.min(1, Math.max(0, progress)) * Math.PI) * 0.65
+    : 0;
+
   return (
     <section
       ref={containerRef}
@@ -213,6 +218,28 @@ export function EmpanadaScrollScrubber() {
             }`}
           />
 
+          {/* Ultra-subtle Rising Steam / Smoke ("Humo") Overlay */}
+          <div
+            className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-500"
+            style={{ opacity: steamIntensity }}
+          >
+            {/* Wisp 1 */}
+            <div
+              className="animate-steam-1 absolute left-[42%] top-[38%] w-40 sm:w-56 h-56 sm:h-72 rounded-full bg-gradient-to-t from-transparent via-white/[0.09] to-orange-100/[0.04] dark:via-white/[0.07] dark:to-orange-200/[0.03] blur-2xl"
+              style={{ transformOrigin: 'center bottom' }}
+            />
+            {/* Wisp 2 */}
+            <div
+              className="animate-steam-2 absolute left-[52%] top-[42%] w-48 sm:w-64 h-60 sm:h-80 rounded-full bg-gradient-to-t from-transparent via-amber-50/[0.08] to-white/[0.05] dark:via-orange-100/[0.06] dark:to-white/[0.03] blur-3xl"
+              style={{ transformOrigin: 'center bottom' }}
+            />
+            {/* Wisp 3 */}
+            <div
+              className="animate-steam-3 absolute left-[36%] top-[45%] w-36 sm:w-48 h-48 sm:h-64 rounded-full bg-gradient-to-t from-transparent via-white/[0.07] to-transparent dark:via-white/[0.05] blur-2xl"
+              style={{ transformOrigin: 'center bottom' }}
+            />
+          </div>
+
           {/* Desktop left edge gradient */}
           <div className="hidden lg:block absolute inset-y-0 left-0 w-48 xl:w-64 bg-gradient-to-r from-[#faf9f6] via-[#faf9f6]/45 to-transparent dark:from-[#0d0e12] dark:via-[#0d0e12]/45 dark:to-transparent" />
           {/* Mobile/Tablet top edge gradient so upper text sits cleanly on background */}
@@ -227,7 +254,9 @@ export function EmpanadaScrollScrubber() {
 
         {/* Left Minimalist Content with Smooth Cross-Fade & Slide Transitions */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full flex flex-col justify-start lg:justify-center pt-5 sm:pt-8 lg:pt-0">
-          <div className="max-w-lg space-y-5 sm:space-y-7">
+          <div className="relative max-w-lg space-y-5 sm:space-y-7">
+            {/* Soft Blurred Orange Ambient Glow Behind Text */}
+            <div className="pointer-events-none absolute -left-16 -top-10 w-72 sm:w-96 h-64 sm:h-80 rounded-full bg-gradient-to-tr from-orange-500/15 via-amber-500/10 to-transparent dark:from-orange-500/20 dark:via-amber-500/12 blur-[90px] sm:blur-[120px] -z-10" />
             {/* Stacked Animated Text Beats */}
             <div className="grid grid-cols-1">
               {STORY_BEATS.map((beat, idx) => {

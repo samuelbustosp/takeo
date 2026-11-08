@@ -121,7 +121,17 @@ export default function RootHomePage() {
         <EmpanadaScrollScrubber />
 
         {/* Modern Bento Section */}
-        <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-28 w-full">
+        <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-28 w-full isolate">
+          {/* Ambient Orange Background Lights */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 overflow-visible"
+          >
+            <div className="absolute top-20 left-[5%] w-[360px] sm:w-[560px] h-[340px] sm:h-[460px] rounded-full bg-gradient-to-br from-orange-500/25 via-amber-500/15 to-transparent dark:from-orange-500/25 dark:via-amber-500/15 blur-[110px] sm:blur-[140px]" />
+            <div className="absolute bottom-12 right-[4%] w-[340px] sm:w-[520px] h-[320px] sm:h-[440px] rounded-full bg-gradient-to-tl from-orange-600/20 via-amber-400/15 to-transparent dark:from-orange-600/25 dark:via-amber-500/15 blur-[110px] sm:blur-[145px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[480px] h-[280px] sm:h-[360px] rounded-full bg-orange-500/12 dark:bg-orange-500/15 blur-[130px]" />
+          </div>
+
           {/* Section Header */}
           <div className="max-w-2xl mb-10 sm:mb-14 space-y-3">
             <div className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400">
@@ -139,7 +149,7 @@ export default function RootHomePage() {
           {/* Bento Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
             {/* Card 1: Large Feature — Menú Web Instantáneo */}
-            <div className="lg:col-span-7 group relative overflow-hidden rounded-3xl bg-white dark:bg-[#14161f] border border-zinc-200/80 dark:border-zinc-800/80 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-7 sm:gap-8 shadow-xs hover:border-orange-500/40 transition-all duration-300">
+            <div className="lg:col-span-7 group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-7 sm:gap-8 shadow-lg shadow-orange-500/[0.04] hover:border-orange-500/40 transition-all duration-300">
               <div className="space-y-4 w-full">
                 {/* Unified Card Header */}
                 <div className="w-full flex items-center justify-between">
@@ -158,14 +168,14 @@ export default function RootHomePage() {
                       Instagram o QR
                     </span>
                   </h3>
-                  <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed">
                     Sin descargas ni registros. Tus clientes ven fotos reales, eligen variantes y confirman su compra en segundos.
                   </p>
                 </div>
               </div>
 
               {/* Interactive-style Mini UI Preview */}
-              <div className="rounded-2xl bg-[#faf9f6] dark:bg-[#0d0e12] border border-zinc-200/80 dark:border-zinc-800/80 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="rounded-2xl bg-white/70 dark:bg-[#0d0e12]/70 backdrop-blur-md border border-zinc-200/70 dark:border-white/10 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white font-bold text-lg flex items-center justify-center shadow-md shadow-orange-500/20">
                     <QrCode className="w-6 h-6" />
@@ -183,7 +193,7 @@ export default function RootHomePage() {
             </div>
 
             {/* Card 2: Olvidate de tomar pedidos por WhatsApp */}
-            <div className="lg:col-span-5 group relative overflow-hidden rounded-3xl bg-white dark:bg-[#14161f] border border-zinc-200/80 dark:border-zinc-800/80 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-2 sm:gap-3 shadow-xs hover:border-emerald-500/40 transition-all duration-300">
+            <div className="lg:col-span-5 group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-2 sm:gap-3 shadow-lg shadow-orange-500/[0.04] hover:border-emerald-500/40 transition-all duration-300">
               <div className="space-y-4 w-full">
                 {/* Unified Card Header with Notification Badge */}
                 <div className="w-full flex items-center justify-between">
@@ -209,14 +219,14 @@ export default function RootHomePage() {
                       por WhatsApp
                     </span>
                   </h3>
-                  <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed">
                     El cliente pide en la web y recibe cada estado al instante, sin responder chats.
                   </p>
                 </div>
               </div>
 
               {/* Compact WhatsApp Simulated Message Stream */}
-              <div className="rounded-2xl bg-zinc-50/90 dark:bg-[#0c1317] border border-emerald-500/20 p-3 sm:p-2.5 space-y-3">
+              <div className="rounded-2xl bg-white/70 dark:bg-[#0c1317]/75 backdrop-blur-md border border-emerald-500/20 p-3 sm:p-2.5 space-y-3">
                 {/* WhatsApp Chat mini-header */}
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-200/70 dark:border-zinc-800/80">
                   <div className="flex items-center gap-2">
@@ -284,7 +294,7 @@ export default function RootHomePage() {
             </div>
 
             {/* Card 3: Full-Width Bottom Bento — Animated Mini Kanban Showcase */}
-            <div className="lg:col-span-12 relative overflow-hidden rounded-3xl bg-zinc-900 dark:bg-[#14161f] border border-zinc-800 p-6 sm:p-8 lg:p-10 flex flex-col gap-7 sm:gap-8 text-white">
+            <div className="lg:col-span-12 relative overflow-hidden rounded-3xl bg-zinc-900/80 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/20 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col gap-7 sm:gap-8 text-white shadow-xl shadow-orange-500/[0.05]">
               {/* Unified Card Header (matching 01 and 02) */}
               <div className="w-full flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">

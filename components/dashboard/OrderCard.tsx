@@ -216,7 +216,7 @@ export function OrderCard({ order, onClick, onAdvanceStatus }: Props) {
               className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
             >
               <Eye className="w-3 h-3" />
-              <span>Abrir modal completo</span>
+              <span>Ver</span>
             </button>
           </div>
         </div>
