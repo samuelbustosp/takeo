@@ -92,20 +92,56 @@ export function EmpanadaScrollScrubber() {
 
     if (!img || !img.complete || img.naturalWidth === 0) return;
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const targetW = isMobile ? 800 : 1280;
+    const targetH = isMobile ? 1350 : 720;
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+
     const cw = canvas.width;
     const ch = canvas.height;
     const iw = img.naturalWidth;
     const ih = img.naturalHeight;
 
-    const scale = Math.max(cw / iw, ch / ih);
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    const dx = (cw - dw) * (isMobile ? 0.5 : 0.55);
-    const dy = (ch - dh) * 0.5;
-
     ctx.clearRect(0, 0, cw, ch);
-    ctx.drawImage(img, dx, dy, dw, dh);
+
+    if (isMobile) {
+      // Reduced zoom on mobile so the full empanada is visible, positioned in the upper portion
+      const dw = cw * 1.48;
+      const dh = dw * (ih / iw) * 1.1;
+      const dx = (cw - dw) * 0.5;
+      const dy = ch * 0.05;
+
+      // Fill lower region with darkened continuation of the wooden table before drawing main frame
+      const bottomEdgeY = dy + dh;
+      if (bottomEdgeY < ch) {
+        ctx.save();
+        ctx.translate(0, bottomEdgeY * 2);
+        ctx.scale(1, -1);
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+      }
+
+      ctx.drawImage(img, dx, dy, dw, dh);
+
+      // Subtle dark shadow over the lower portion so text over the animation reads crisply
+      const shadowGrad = ctx.createLinearGradient(0, ch * 0.38, 0, ch);
+      shadowGrad.addColorStop(0, 'rgba(10, 11, 15, 0)');
+      shadowGrad.addColorStop(0.32, 'rgba(10, 11, 15, 0.52)');
+      shadowGrad.addColorStop(0.58, 'rgba(10, 11, 15, 0.82)');
+      shadowGrad.addColorStop(1, 'rgba(10, 11, 15, 0.94)');
+      ctx.fillStyle = shadowGrad;
+      ctx.fillRect(0, ch * 0.38, cw, ch * 0.62);
+    } else {
+      const scale = Math.max(cw / iw, ch / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (cw - dw) * 0.55;
+      const dy = (ch - dh) * 0.5;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
   }, []);
 
   useEffect(() => {
@@ -177,14 +213,19 @@ export function EmpanadaScrollScrubber() {
       rafRef.current = requestAnimationFrame(tick);
     };
 
+    const handleResize = () => {
+      updateScrollTarget();
+      drawFrame(currentFrameRef.current);
+    };
+
     updateScrollTarget();
     window.addEventListener('scroll', updateScrollTarget, { passive: true });
-    window.addEventListener('resize', updateScrollTarget);
+    window.addEventListener('resize', handleResize);
     rafRef.current = requestAnimationFrame(tick);
 
     return () => {
       window.removeEventListener('scroll', updateScrollTarget);
-      window.removeEventListener('resize', updateScrollTarget);
+      window.removeEventListener('resize', handleResize);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [drawFrame]);
@@ -207,8 +248,8 @@ export function EmpanadaScrollScrubber() {
       aria-label="Presentación interactiva TAKEO"
     >
       <div className="sticky top-0 h-screen pt-16 w-full overflow-hidden bg-[#faf9f6] dark:bg-[#0d0e12] flex items-center">
-        {/* Background Animation: lower portion on mobile, right side on desktop */}
-        <div className="pointer-events-none absolute top-[34%] sm:top-[30%] lg:top-0 bottom-0 right-0 w-full lg:w-[68%] xl:w-[65%]">
+        {/* Background Animation: full-bleed on mobile (with image shifted up & un-zoomed), right side on desktop */}
+        <div className="pointer-events-none absolute inset-0 lg:left-auto lg:w-[68%] xl:w-[65%]">
           <canvas
             ref={canvasRef}
             width={1280}
@@ -225,35 +266,35 @@ export function EmpanadaScrollScrubber() {
           >
             {/* Wisp 1 */}
             <div
-              className="animate-steam-1 absolute left-[42%] top-[38%] w-40 sm:w-56 h-56 sm:h-72 rounded-full bg-gradient-to-t from-transparent via-white/[0.09] to-orange-100/[0.04] dark:via-white/[0.07] dark:to-orange-200/[0.03] blur-2xl"
+              className="animate-steam-1 absolute left-[42%] top-[20%] lg:top-[38%] w-40 sm:w-56 h-56 sm:h-72 rounded-full bg-gradient-to-t from-transparent via-white/[0.09] to-orange-100/[0.04] dark:via-white/[0.07] dark:to-orange-200/[0.03] blur-2xl"
               style={{ transformOrigin: 'center bottom' }}
             />
             {/* Wisp 2 */}
             <div
-              className="animate-steam-2 absolute left-[52%] top-[42%] w-48 sm:w-64 h-60 sm:h-80 rounded-full bg-gradient-to-t from-transparent via-amber-50/[0.08] to-white/[0.05] dark:via-orange-100/[0.06] dark:to-white/[0.03] blur-3xl"
+              className="animate-steam-2 absolute left-[52%] top-[24%] lg:top-[42%] w-48 sm:w-64 h-60 sm:h-80 rounded-full bg-gradient-to-t from-transparent via-amber-50/[0.08] to-white/[0.05] dark:via-orange-100/[0.06] dark:to-white/[0.03] blur-3xl"
               style={{ transformOrigin: 'center bottom' }}
             />
             {/* Wisp 3 */}
             <div
-              className="animate-steam-3 absolute left-[36%] top-[45%] w-36 sm:w-48 h-48 sm:h-64 rounded-full bg-gradient-to-t from-transparent via-white/[0.07] to-transparent dark:via-white/[0.05] blur-2xl"
+              className="animate-steam-3 absolute left-[36%] top-[26%] lg:top-[45%] w-36 sm:w-48 h-48 sm:h-64 rounded-full bg-gradient-to-t from-transparent via-white/[0.07] to-transparent dark:via-white/[0.05] blur-2xl"
               style={{ transformOrigin: 'center bottom' }}
             />
           </div>
 
           {/* Desktop left edge gradient */}
           <div className="hidden lg:block absolute inset-y-0 left-0 w-48 xl:w-64 bg-gradient-to-r from-[#faf9f6] via-[#faf9f6]/45 to-transparent dark:from-[#0d0e12] dark:via-[#0d0e12]/45 dark:to-transparent" />
-          {/* Mobile/Tablet top edge gradient so upper text sits cleanly on background */}
-          <div className="lg:hidden absolute inset-x-0 top-0 h-28 sm:h-36 bg-gradient-to-b from-[#faf9f6] via-[#faf9f6]/70 to-transparent dark:from-[#0d0e12] dark:via-[#0d0e12]/70 dark:to-transparent" />
-          {/* Desktop top edge gradient */}
-          <div className="hidden lg:block absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
+          {/* Top edge gradient */}
+          <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
+          {/* Mobile soft dark shadow over the lower portion of the animation behind text */}
+          <div className="lg:hidden absolute inset-x-0 bottom-0 h-[56%] bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
           {/* Bottom edge gradient */}
           <div className="absolute inset-x-0 bottom-0 h-16 sm:h-24 bg-gradient-to-t from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
           {/* Ultra-wide right edge gradient */}
           <div className="hidden xl:block absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
         </div>
 
-        {/* Left Minimalist Content with Smooth Cross-Fade & Slide Transitions */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full flex flex-col justify-start lg:justify-center pt-5 sm:pt-8 lg:pt-0">
+        {/* Content: Overlaid on lower animation on Mobile, Left Vertically Centered on Desktop */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full flex flex-col justify-end lg:justify-center pb-12 sm:pb-16 lg:pb-0">
           <div className="relative max-w-lg space-y-5 sm:space-y-7">
             {/* Soft Blurred Orange Ambient Glow Behind Text */}
             <div className="pointer-events-none absolute -left-16 -top-10 w-72 sm:w-96 h-64 sm:h-80 rounded-full bg-gradient-to-tr from-orange-500/15 via-amber-500/10 to-transparent dark:from-orange-500/20 dark:via-amber-500/12 blur-[90px] sm:blur-[120px] -z-10" />
@@ -275,18 +316,18 @@ export function EmpanadaScrollScrubber() {
                           : 'opacity-0 translate-y-8 scale-[0.98] blur-xs pointer-events-none'
                     }`}
                   >
-                    <span className="inline-block font-mono text-[10px] sm:text-[11px] tracking-[0.2em] uppercase text-orange-600 dark:text-orange-400 font-semibold">
+                    <span className="inline-block font-mono text-[10px] sm:text-[11px] tracking-[0.2em] uppercase text-orange-400 lg:text-orange-600 dark:text-orange-400 font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] lg:drop-shadow-none">
                       {beat.tag}
                     </span>
 
-                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-zinc-900 dark:text-white tracking-tight leading-[1.06]">
+                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white lg:text-zinc-900 dark:text-white tracking-tight leading-[1.06] drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
                       {beat.title}{' '}
-                      <span className="block font-extrabold tracking-tight bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 bg-clip-text text-transparent pb-0.5">
+                      <span className="block font-extrabold tracking-tight bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 lg:from-orange-600 lg:via-orange-500 lg:to-amber-500 bg-clip-text text-transparent pb-0.5">
                         {beat.highlight}
                       </span>
                     </h1>
 
-                    <p className="text-sm sm:text-lg lg:text-xl text-zinc-600 dark:text-zinc-300 font-medium leading-snug max-w-md">
+                    <p className="text-sm sm:text-lg lg:text-xl text-zinc-200 lg:text-zinc-600 dark:text-zinc-300 font-medium leading-snug max-w-md drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
                       {beat.subtitle}
                     </p>
                   </div>

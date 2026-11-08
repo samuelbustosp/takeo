@@ -75,6 +75,52 @@ const WHATSAPP_MESSAGES = [
   },
 ];
 
+function ScrollReveal({
+  children,
+  className = '',
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        } else if (entry.boundingClientRect.top > 0) {
+          setIsVisible(false);
+        }
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{ transitionDelay: isVisible ? `${delay}ms` : '0ms' }}
+      className={`transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isVisible
+          ? 'opacity-100 translate-y-0 scale-100 blur-none'
+          : 'opacity-0 translate-y-8 scale-[0.98] blur-sm'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function RootHomePage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [activeKanbanStep, setActiveKanbanStep] = useState<number>(0);
@@ -133,7 +179,7 @@ export default function RootHomePage() {
           </div>
 
           {/* Section Header */}
-          <div className="max-w-2xl mb-10 sm:mb-14 space-y-3">
+          <ScrollReveal className="max-w-2xl mb-10 sm:mb-14 space-y-3">
             <div className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-600 dark:text-orange-400">
               ////
               <span>DISEÑADO PARA GASTRONÓMICOS</span>
@@ -144,12 +190,13 @@ export default function RootHomePage() {
                 Sin intermediarios.
               </span>
             </h2>
-          </div>
+          </ScrollReveal>
 
           {/* Bento Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
             {/* Card 1: Large Feature — Menú Web Instantáneo */}
-            <div className="lg:col-span-7 group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-7 sm:gap-8 shadow-lg shadow-orange-500/[0.04] hover:border-orange-500/40 transition-all duration-300">
+            <ScrollReveal className="lg:col-span-7 flex" delay={60}>
+              <div className="w-full group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-7 sm:gap-8 shadow-lg shadow-orange-500/[0.04] hover:border-orange-500/40 transition-all duration-300">
               <div className="space-y-4 w-full">
                 {/* Unified Card Header */}
                 <div className="w-full flex items-center justify-between">
@@ -190,10 +237,12 @@ export default function RootHomePage() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            </ScrollReveal>
 
             {/* Card 2: Olvidate de tomar pedidos por WhatsApp */}
-            <div className="lg:col-span-5 group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-2 sm:gap-3 shadow-lg shadow-orange-500/[0.04] hover:border-emerald-500/40 transition-all duration-300">
+            <ScrollReveal className="lg:col-span-5 flex" delay={160}>
+              <div className="w-full group relative overflow-hidden rounded-3xl bg-white/60 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/15 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col justify-between gap-2 sm:gap-3 shadow-lg shadow-orange-500/[0.04] hover:border-emerald-500/40 transition-all duration-300">
               <div className="space-y-4 w-full">
                 {/* Unified Card Header with Notification Badge */}
                 <div className="w-full flex items-center justify-between">
@@ -291,10 +340,12 @@ export default function RootHomePage() {
                   )}
                 </div>
               </div>
-            </div>
+              </div>
+            </ScrollReveal>
 
             {/* Card 3: Full-Width Bottom Bento — Animated Mini Kanban Showcase */}
-            <div className="lg:col-span-12 relative overflow-hidden rounded-3xl bg-zinc-900/80 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/20 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col gap-7 sm:gap-8 text-white shadow-xl shadow-orange-500/[0.05]">
+            <ScrollReveal className="lg:col-span-12" delay={100}>
+              <div className="relative overflow-hidden rounded-3xl bg-zinc-900/80 dark:bg-[#14161f]/60 backdrop-blur-2xl border border-orange-500/20 dark:border-orange-500/20 p-6 sm:p-8 lg:p-10 flex flex-col gap-7 sm:gap-8 text-white shadow-xl shadow-orange-500/[0.05]">
               {/* Unified Card Header (matching 01 and 02) */}
               <div className="w-full flex items-center justify-between">
                 <div className="w-11 h-11 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
@@ -412,6 +463,7 @@ export default function RootHomePage() {
                 </div>
               </div>
             </div>
+            </ScrollReveal>
           </div>
         </section>
       </main>
