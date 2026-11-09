@@ -1,7 +1,67 @@
 import {
-  Business, BusinessSettings, Category, Product, Discount, Order, OrderStatus, WhatsAppMessage, OrderItem
+  Business, BusinessSettings, Category, Product, Discount, Order, OrderStatus, WhatsAppMessage, OrderItem, BusinessScheduleConfig
 } from '@/types';
 import { createClient } from '../supabase/client';
+
+export const DEFAULT_BUSINESS_SCHEDULE: BusinessScheduleConfig = {
+  autoSchedule: false,
+  days: [
+    { day: 'Lunes', dayOfWeek: 1, isOpen: true, openTime: '11:00', closeTime: '23:30' },
+    { day: 'Martes', dayOfWeek: 2, isOpen: true, openTime: '11:00', closeTime: '23:30' },
+    { day: 'Miércoles', dayOfWeek: 3, isOpen: true, openTime: '11:00', closeTime: '23:30' },
+    { day: 'Jueves', dayOfWeek: 4, isOpen: true, openTime: '11:00', closeTime: '23:30' },
+    { day: 'Viernes', dayOfWeek: 5, isOpen: true, openTime: '11:00', closeTime: '00:30' },
+    { day: 'Sábado', dayOfWeek: 6, isOpen: true, openTime: '11:00', closeTime: '00:30' },
+    { day: 'Domingo', dayOfWeek: 0, isOpen: true, openTime: '12:00', closeTime: '23:30' },
+  ],
+};
+
+export function isScheduleCurrentlyOpen(schedule: BusinessScheduleConfig): boolean {
+  const now = new Date();
+  const currentDay = now.getDay();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const todayConfig = schedule.days.find((d) => d.dayOfWeek === currentDay);
+  if (!todayConfig || !todayConfig.isOpen) return false;
+
+  const [openH, openM] = todayConfig.openTime.split(':').map(Number);
+  const [closeH, closeM] = todayConfig.closeTime.split(':').map(Number);
+  const openTotal = (openH || 0) * 60 + (openM || 0);
+  const closeTotal = (closeH || 0) * 60 + (closeM || 0);
+
+  if (closeTotal >= openTotal) {
+    return currentMinutes >= openTotal && currentMinutes <= closeTotal;
+  } else {
+    // Overnight schedule (e.g. 19:00 to 01:30)
+    return currentMinutes >= openTotal || currentMinutes <= closeTotal;
+  }
+}
+
+function enrichBusinessWithSchedule(raw: Business): Business {
+  if (typeof window === 'undefined') return raw;
+  try {
+    const key = `takeo_schedule_${raw.id || raw.slug}`;
+    const saved = localStorage.getItem(key);
+    const schedule: BusinessScheduleConfig = saved ? JSON.parse(saved) : DEFAULT_BUSINESS_SCHEDULE;
+    const computedOpen = schedule.autoSchedule ? isScheduleCurrentlyOpen(schedule) : raw.is_open;
+    return {
+      ...raw,
+      opening_hours: schedule,
+      is_open: computedOpen,
+    };
+  } catch {
+    return { ...raw, opening_hours: DEFAULT_BUSINESS_SCHEDULE };
+  }
+}
+
+function saveScheduleToLocal(idOrSlug: string, schedule?: BusinessScheduleConfig) {
+  if (typeof window === 'undefined' || !schedule || !idOrSlug) return;
+  try {
+    localStorage.setItem(`takeo_schedule_${idOrSlug}`, JSON.stringify(schedule));
+  } catch {
+    // Ignore
+  }
+}
 
 export async function getBusiness(slugOrId?: string | null): Promise<Business | null> {
   const supabase = createClient();
@@ -18,7 +78,7 @@ export async function getBusiness(slugOrId?: string | null): Promise<Business | 
     if (error || !data) {
       return null;
     }
-    return data as unknown as Business;
+    return enrichBusinessWithSchedule(data as unknown as Business);
   }
 
   // If no slug or id, try to get the business of the logged in user
@@ -29,7 +89,7 @@ export async function getBusiness(slugOrId?: string | null): Promise<Business | 
   if (error || !data) {
     return null;
   }
-  return data as unknown as Business;
+  return enrichBusinessWithSchedule(data as unknown as Business);
 }
 
 export async function createBusiness(payload: Partial<Business>): Promise<Business | null> {
@@ -37,10 +97,12 @@ export async function createBusiness(payload: Partial<Business>): Promise<Busine
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Usuario no autenticado');
 
+  const { opening_hours, ...dbPayload } = payload;
+
   const { data, error } = await supabase
     .from('businesses')
     .insert([{
-      ...payload,
+      ...dbPayload,
       user_id: user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -49,6 +111,10 @@ export async function createBusiness(payload: Partial<Business>): Promise<Busine
     .single();
 
   if (error) throw error;
+
+  if (data?.id && opening_hours) {
+    saveScheduleToLocal(data.id, opening_hours);
+  }
 
   // Ensure default settings exist
   if (data?.id) {
@@ -64,7 +130,7 @@ export async function createBusiness(payload: Partial<Business>): Promise<Busine
     }, { onConflict: 'business_id' });
   }
 
-  return data as unknown as Business;
+  return enrichBusinessWithSchedule(data as unknown as Business);
 }
 
 export async function updateBusiness(updates: Partial<Business>): Promise<Business | null> {
@@ -72,28 +138,36 @@ export async function updateBusiness(updates: Partial<Business>): Promise<Busine
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const { opening_hours, ...dbUpdates } = updates;
+  if (opening_hours && (updates.id || updates.slug)) {
+    saveScheduleToLocal(updates.id || updates.slug || '', opening_hours);
+    if (opening_hours.autoSchedule) {
+      dbUpdates.is_open = isScheduleCurrentlyOpen(opening_hours);
+    }
+  }
+
   // Check if business exists
   if (updates.id) {
     const { data, error } = await supabase
       .from('businesses')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...dbUpdates, updated_at: new Date().toISOString() })
       .eq('id', updates.id)
       .select()
       .single();
 
     if (error) throw error;
-    return data as unknown as Business;
+    return enrichBusinessWithSchedule(data as unknown as Business);
   }
 
   const { data, error } = await supabase
     .from('businesses')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...dbUpdates, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .select()
     .single();
 
   if (error) throw error;
-  return data as unknown as Business;
+  return enrichBusinessWithSchedule(data as unknown as Business);
 }
 
 async function resolveBusinessId(providedId?: string): Promise<string | null> {
@@ -148,6 +222,18 @@ export async function getCategories(businessId?: string): Promise<Category[]> {
   const { data, error } = await supabase.from('categories').select('*').eq('business_id', bId).order('display_order', { ascending: true });
   if (error) throw error;
   return (data || []) as unknown as Category[];
+}
+
+export async function reorderCategories(orderedItems: { id: string; display_order: number }[]): Promise<void> {
+  const supabase = createClient();
+  await Promise.all(
+    orderedItems.map((item) =>
+      supabase
+        .from('categories')
+        .update({ display_order: item.display_order, updated_at: new Date().toISOString() })
+        .eq('id', item.id)
+    )
+  );
 }
 
 // Helpers
@@ -279,14 +365,68 @@ export async function deleteCategory(id: string): Promise<void> {
 }
 
 // Products
+function saveProductsSnapshotToLocal(bId: string, products: Product[]) {
+  if (typeof window === 'undefined' || !bId) return;
+  try {
+    localStorage.setItem(`takeo_products_${bId}`, JSON.stringify(products));
+  } catch {
+    // Ignore
+  }
+}
+
+function getProductsSnapshotFromLocal(bId: string): Product[] {
+  if (typeof window === 'undefined' || !bId) return [];
+  try {
+    const raw = localStorage.getItem(`takeo_products_${bId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getProducts(businessId?: string): Promise<Product[]> {
   const supabase = createClient();
   const bId = await resolveBusinessId(businessId);
   if (!bId) return [];
 
-  const { data, error } = await supabase.from('products').select('*').eq('business_id', bId).order('display_order', { ascending: true });
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('business_id', bId)
+    .order('display_order', { ascending: true });
   if (error) throw error;
-  return (data || []) as unknown as Product[];
+
+  const dbProducts = (data || []) as unknown as Product[];
+  const cachedProducts = getProductsSnapshotFromLocal(bId);
+  const cachedMap = new Map(cachedProducts.map((p) => [p.id, p]));
+
+  // Merge DB products with local snapshot so deactivated products (is_available = false)
+  // always remain visible in the catalog as "Agotado".
+  const reconciledDb = dbProducts.map((dbProd) => {
+    const cached = cachedMap.get(dbProd.id);
+    if (
+      cached &&
+      cached.updated_at &&
+      dbProd.updated_at &&
+      new Date(cached.updated_at).getTime() > new Date(dbProd.updated_at).getTime()
+    ) {
+      return { ...dbProd, ...cached };
+    }
+    return dbProd;
+  });
+
+  const dbIds = new Set(reconciledDb.map((p) => p.id));
+  const missingUnavailable = cachedProducts.filter(
+    (p) => !dbIds.has(p.id) && p.is_available === false
+  );
+
+  const merged = [...reconciledDb, ...missingUnavailable].sort(
+    (a, b) => (a.display_order || 0) - (b.display_order || 0)
+  );
+
+  saveProductsSnapshotToLocal(bId, merged);
+
+  return merged;
 }
 
 export async function createProduct(prod: Partial<Product>): Promise<Product> {
@@ -313,7 +453,10 @@ export async function createProduct(prod: Partial<Product>): Promise<Product> {
     .single();
 
   if (error) throw error;
-  return data as unknown as Product;
+  const created = data as unknown as Product;
+  const existing = getProductsSnapshotFromLocal(bId);
+  saveProductsSnapshotToLocal(bId, [...existing, created]);
+  return created;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
@@ -336,16 +479,42 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
     .update(payload)
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
-  return data as unknown as Product;
+  if (error && error.code !== 'PGRST116') throw error;
+
+  const bId = (data as any)?.business_id || (await resolveBusinessId());
+  let updated = data as unknown as Product | null;
+
+  if (bId) {
+    const existing = getProductsSnapshotFromLocal(bId);
+    const prev = existing.find((p) => p.id === id);
+    if (!updated && prev) {
+      updated = { ...prev, ...updates, updated_at: payload.updated_at };
+    }
+    if (updated) {
+      const next = existing.some((p) => p.id === id)
+        ? existing.map((p) => (p.id === id ? (updated as Product) : p))
+        : [...existing, updated];
+      saveProductsSnapshotToLocal(bId, next);
+    }
+  }
+
+  return (updated || ({ id, ...updates } as Product));
 }
 
 export async function deleteProduct(id: string): Promise<void> {
   const supabase = createClient();
+  const bId = await resolveBusinessId();
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
+  if (bId) {
+    const existing = getProductsSnapshotFromLocal(bId);
+    saveProductsSnapshotToLocal(
+      bId,
+      existing.filter((p) => p.id !== id)
+    );
+  }
 }
 
 // Discounts

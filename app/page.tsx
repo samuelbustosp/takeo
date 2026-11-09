@@ -159,7 +159,7 @@ export default function RootHomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] dark:bg-[#0d0e12] flex flex-col">
+    <div className="dark min-h-screen bg-[#0d0e12] text-white flex flex-col">
       <Navbar />
 
       <main className="flex-1 flex flex-col w-full">

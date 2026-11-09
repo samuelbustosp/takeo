@@ -2,7 +2,16 @@
 
 import React from 'react';
 import { Category } from '@/types';
-import { Flame, UtensilsCrossed, Sandwich, CupSoda, IceCream, Utensils } from 'lucide-react';
+import {
+  Flame,
+  UtensilsCrossed,
+  Sandwich,
+  CupSoda,
+  IceCream,
+  Utensils,
+  Pizza,
+  Coffee,
+} from 'lucide-react';
 
 interface Props {
   categories: Category[];
@@ -10,24 +19,34 @@ interface Props {
   onSelectCategory: (id: string | null) => void;
 }
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Flame,
-  UtensilsCrossed,
-  Sandwich,
-  CupSoda,
-  IceCream,
+export const ICON_MAP: Record<string, React.ElementType> = {
   Utensils,
+  utensils: Utensils,
+  Sandwich,
+  sandwich: Sandwich,
+  CupSoda,
+  'cup-soda': CupSoda,
+  Pizza,
+  pizza: Pizza,
+  Coffee,
+  coffee: Coffee,
+  Flame,
+  flame: Flame,
+  UtensilsCrossed,
+  IceCream,
+  'ice-cream': IceCream,
 };
 
 export function CategoryTabs({ categories, selectedCategory, onSelectCategory }: Props) {
   return (
     <div className="w-full overflow-x-auto py-2 scrollbar-none no-scrollbar flex items-center gap-2">
       <button
+        type="button"
         onClick={() => onSelectCategory(null)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border transition-colors ${
           selectedCategory === null
-            ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
-            : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-orange-500/50 hover:text-orange-600'
+            ? 'bg-orange-600 border-orange-600 text-white shadow-md shadow-orange-600/20'
+            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-orange-500/50 hover:text-orange-600'
         }`}
       >
         <span>Todos</span>
@@ -39,12 +58,13 @@ export function CategoryTabs({ categories, selectedCategory, onSelectCategory }:
 
         return (
           <button
+            type="button"
             key={cat.id}
             onClick={() => onSelectCategory(cat.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border transition-colors ${
               isSelected
-                ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
-                : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-orange-500/50 hover:text-orange-600'
+                ? 'bg-orange-600 border-orange-600 text-white shadow-md shadow-orange-600/20'
+                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-orange-500/50 hover:text-orange-600'
             }`}
           >
             <IconComponent className="w-4 h-4" />

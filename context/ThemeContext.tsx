@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -14,13 +15,17 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isDashboardRoute = pathname?.startsWith('/dashboard') ?? false;
+  const isLandingRoute = pathname === '/';
+
   const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   useEffect(() => {
     try {
-      const savedTheme = localStorage.getItem('takeo_theme') as Theme | null;
-      if (savedTheme) {
+      const savedTheme = localStorage.getItem('takeo_dashboard_theme') as Theme | null;
+      if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
         setThemeState(savedTheme);
       }
     } catch {
@@ -33,17 +38,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const updateResolved = () => {
-      let isDark = false;
-      if (theme === 'dark') {
-        isDark = true;
-      } else if (theme === 'light') {
-        isDark = false;
-      } else {
-        isDark = mediaQuery.matches;
+      const systemIsDark = mediaQuery.matches;
+
+      // Landing page ('/') is ALWAYS dark regardless of device configuration.
+      // Catalog & other routes follow device/OS theme (prefers-color-scheme).
+      // Dashboard follows the dashboard toggle (defaulting to device/OS theme).
+      let shouldBeDark = systemIsDark;
+      if (isLandingRoute) {
+        shouldBeDark = true;
+      } else if (isDashboardRoute) {
+        if (theme === 'dark') {
+          shouldBeDark = true;
+        } else if (theme === 'light') {
+          shouldBeDark = false;
+        } else {
+          shouldBeDark = systemIsDark;
+        }
       }
 
-      setResolvedTheme(isDark ? 'dark' : 'light');
-      if (isDark) {
+      setResolvedTheme(shouldBeDark ? 'dark' : 'light');
+
+      if (shouldBeDark) {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
@@ -53,19 +68,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateResolved();
     mediaQuery.addEventListener('change', updateResolved);
     return () => mediaQuery.removeEventListener('change', updateResolved);
-  }, [theme]);
+  }, [theme, isDashboardRoute, isLandingRoute]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     try {
-      localStorage.setItem('takeo_theme', newTheme);
+      localStorage.setItem('takeo_dashboard_theme', newTheme);
     } catch {
       // Ignore
     }
   };
 
   const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
   };
 
   return (

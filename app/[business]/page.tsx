@@ -19,6 +19,8 @@ import {
   Phone,
   Store,
   ChevronRight,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 
 export default function BusinessCatalogPage() {
@@ -30,6 +32,7 @@ export default function BusinessCatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [productLayout, setProductLayout] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -200,7 +203,7 @@ export default function BusinessCatalogPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full pb-28 sm:pb-12">
         {/* Search & Categories Bar */}
         <div className="sticky top-16 z-30 bg-[#faf9f6]/95 dark:bg-[#0d0e12]/95 backdrop-blur-md py-3 space-y-3 -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-zinc-200/50 dark:border-zinc-800/50">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {/* Search Input */}
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -209,16 +212,51 @@ export default function BusinessCatalogPage() {
                 placeholder="Buscar en el menú..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all shadow-2xs"
+                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors shadow-2xs"
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-zinc-400 hover:text-zinc-600"
                 >
                   Limpiar
                 </button>
               )}
+            </div>
+
+            {/* Grid / List View Switcher (PedidosYa style) */}
+            <div
+              className="flex items-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1 shrink-0 shadow-2xs"
+              role="group"
+              aria-label="Cambiar vista de productos"
+            >
+              <button
+                type="button"
+                onClick={() => setProductLayout('grid')}
+                title="Vista en cuadrícula"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  productLayout === 'grid'
+                    ? 'bg-orange-600 text-white shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grilla</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductLayout('list')}
+                title="Vista en lista"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  productLayout === 'list'
+                    ? 'bg-orange-600 text-white shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lista</span>
+              </button>
             </div>
           </div>
 
@@ -230,7 +268,7 @@ export default function BusinessCatalogPage() {
           />
         </div>
 
-        {/* Products Grid */}
+        {/* Products Grid or List */}
         {filteredProducts.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mx-auto text-zinc-400 mb-3">
@@ -244,9 +282,15 @@ export default function BusinessCatalogPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mt-6">
+          <div
+            className={
+              productLayout === 'list'
+                ? 'grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mt-6'
+                : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mt-6'
+            }
+          >
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} layout={productLayout} />
             ))}
           </div>
         )}

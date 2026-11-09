@@ -316,7 +316,7 @@ export default function RegisterPage() {
             <div className="flex-1 h-1 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
               <div
                 className={`h-full bg-gradient-to-r from-orange-600 to-amber-500 transition-all duration-500 ${
-                  step === 2 ? 'w-full' : 'w-1/3'
+                  step === 2 ? 'w-full' : 'w-0'
                 }`}
               />
             </div>

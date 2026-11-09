@@ -301,7 +301,7 @@ ALTER TABLE whatsapp_messages ENABLE ROW LEVEL SECURITY;
 -- Public can read businesses, active categories and available products
 CREATE POLICY "Public can view businesses" ON businesses FOR SELECT USING (true);
 CREATE POLICY "Public can view active categories" ON categories FOR SELECT USING (is_active = true);
-CREATE POLICY "Public can view available products" ON products FOR SELECT USING (is_available = true);
+CREATE POLICY "Public can view available products" ON products FOR SELECT USING (true);
 CREATE POLICY "Public can view active discounts" ON discounts FOR SELECT USING (is_active = true);
 
 -- Public can insert orders and order items

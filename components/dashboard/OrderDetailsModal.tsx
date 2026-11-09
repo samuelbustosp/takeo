@@ -96,7 +96,7 @@ export function OrderDetailsModal({ order, onClose, onOrderUpdated }: Props) {
                 <OrderStatusBadge status={order.status} size="sm" />
               </div>
               <p className="text-xs text-zinc-500">
-                Creado: {new Date(order.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} ({new Date(order.created_at).toLocaleDateString('es-AR')})
+                Creado: {new Date(order.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} ({new Date(order.created_at).toLocaleDateString('es-AR')})
               </p>
             </div>
           </div>
@@ -260,7 +260,7 @@ export function OrderDetailsModal({ order, onClose, onOrderUpdated }: Props) {
                         </span>
                       </div>
                       <span className="text-[10px] text-zinc-400">
-                        {new Date(m.created_at).toLocaleTimeString('es-AR')}
+                        {new Date(m.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                       </span>
                     </div>
 

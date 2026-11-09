@@ -249,7 +249,7 @@ export function EmpanadaScrollScrubber() {
       className="relative w-full h-[320vh] -mt-16"
       aria-label="Presentación interactiva TAKEO"
     >
-      <div className="sticky top-0 h-screen pt-16 w-full overflow-hidden bg-[#faf9f6] dark:bg-[#0d0e12] flex items-center">
+      <div className="sticky top-0 h-screen pt-16 w-full overflow-hidden bg-[#0d0e12] flex items-center">
         {/* Background Animation: full-bleed on mobile (with image shifted up & un-zoomed), right side on desktop */}
         <div className="pointer-events-none absolute inset-0 lg:left-auto lg:w-[68%] xl:w-[65%]">
           <canvas
@@ -268,31 +268,31 @@ export function EmpanadaScrollScrubber() {
           >
             {/* Wisp 1 */}
             <div
-              className="animate-steam-1 absolute left-[42%] top-[20%] lg:top-[38%] w-40 sm:w-56 h-56 sm:h-72 rounded-full bg-gradient-to-t from-transparent via-white/[0.09] to-orange-100/[0.04] dark:via-white/[0.07] dark:to-orange-200/[0.03] blur-2xl"
+              className="animate-steam-1 absolute left-[42%] top-[20%] lg:top-[38%] w-40 sm:w-56 h-56 sm:h-72 rounded-full bg-gradient-to-t from-transparent via-white/[0.07] to-orange-200/[0.03] blur-2xl"
               style={{ transformOrigin: 'center bottom' }}
             />
             {/* Wisp 2 */}
             <div
-              className="animate-steam-2 absolute left-[52%] top-[24%] lg:top-[42%] w-48 sm:w-64 h-60 sm:h-80 rounded-full bg-gradient-to-t from-transparent via-amber-50/[0.08] to-white/[0.05] dark:via-orange-100/[0.06] dark:to-white/[0.03] blur-3xl"
+              className="animate-steam-2 absolute left-[52%] top-[24%] lg:top-[42%] w-48 sm:w-64 h-60 sm:h-80 rounded-full bg-gradient-to-t from-transparent via-orange-100/[0.06] to-white/[0.03] blur-3xl"
               style={{ transformOrigin: 'center bottom' }}
             />
             {/* Wisp 3 */}
             <div
-              className="animate-steam-3 absolute left-[36%] top-[26%] lg:top-[45%] w-36 sm:w-48 h-48 sm:h-64 rounded-full bg-gradient-to-t from-transparent via-white/[0.07] to-transparent dark:via-white/[0.05] blur-2xl"
+              className="animate-steam-3 absolute left-[36%] top-[26%] lg:top-[45%] w-36 sm:w-48 h-48 sm:h-64 rounded-full bg-gradient-to-t from-transparent via-white/[0.05] to-transparent blur-2xl"
               style={{ transformOrigin: 'center bottom' }}
             />
           </div>
 
           {/* Desktop left edge gradient */}
-          <div className="hidden lg:block absolute inset-y-0 left-0 w-48 xl:w-64 bg-gradient-to-r from-[#faf9f6] via-[#faf9f6]/45 to-transparent dark:from-[#0d0e12] dark:via-[#0d0e12]/45 dark:to-transparent" />
+          <div className="hidden lg:block absolute inset-y-0 left-0 w-48 xl:w-64 bg-gradient-to-r from-[#0d0e12] via-[#0d0e12]/45 to-transparent" />
           {/* Top edge gradient */}
-          <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-16 sm:h-20 bg-gradient-to-b from-[#0d0e12] to-transparent" />
           {/* Mobile soft dark shadow over the lower portion of the animation behind text */}
           <div className="lg:hidden absolute inset-x-0 bottom-0 h-[56%] bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
           {/* Bottom edge gradient */}
-          <div className="absolute inset-x-0 bottom-0 h-16 sm:h-24 bg-gradient-to-t from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-16 sm:h-24 bg-gradient-to-t from-[#0d0e12] to-transparent" />
           {/* Ultra-wide right edge gradient */}
-          <div className="hidden xl:block absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#faf9f6] to-transparent dark:from-[#0d0e12] dark:to-transparent" />
+          <div className="hidden xl:block absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#0d0e12] to-transparent" />
         </div>
 
         {/* Content: Overlaid on lower animation on Mobile, Left Vertically Centered on Desktop */}
@@ -318,18 +318,18 @@ export function EmpanadaScrollScrubber() {
                           : 'opacity-0 translate-y-8 scale-[0.98] blur-xs pointer-events-none'
                     }`}
                   >
-                    <span className="inline-block font-mono text-[10px] sm:text-[11px] tracking-[0.2em] uppercase text-orange-400 lg:text-orange-600 dark:text-orange-400 font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] lg:drop-shadow-none">
+                    <span className="inline-block font-mono text-[10px] sm:text-[11px] tracking-[0.2em] uppercase text-orange-400 font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] lg:drop-shadow-none">
                       {beat.tag}
                     </span>
 
-                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white lg:text-zinc-900 dark:text-white tracking-tight leading-[1.06] drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
+                    <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.06] drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
                       {beat.title}{' '}
-                      <span className="block font-extrabold tracking-tight bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 lg:from-orange-600 lg:via-orange-500 lg:to-amber-500 bg-clip-text text-transparent pb-0.5">
+                      <span className="block font-extrabold tracking-tight bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 bg-clip-text text-transparent pb-0.5">
                         {beat.highlight}
                       </span>
                     </h1>
 
-                    <p className="text-sm sm:text-lg lg:text-xl text-zinc-200 lg:text-zinc-600 dark:text-zinc-300 font-medium leading-snug max-w-md drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
+                    <p className="text-sm sm:text-lg lg:text-xl text-zinc-300 font-medium leading-snug max-w-md drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] lg:drop-shadow-none">
                       {beat.subtitle}
                     </p>
                   </div>
@@ -350,9 +350,9 @@ export function EmpanadaScrollScrubber() {
 
               <Link
                 href="/takeo-express"
-                className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xs border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-xs sm:text-base px-4 sm:px-5 py-3 sm:py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+                className="bg-zinc-900/90 backdrop-blur-xs border border-zinc-800 hover:bg-zinc-800 text-zinc-200 font-bold text-xs sm:text-base px-4 sm:px-5 py-3 sm:py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
-                <Utensils className="w-4 h-4 text-orange-600 shrink-0" />
+                <Utensils className="w-4 h-4 text-orange-500 shrink-0" />
                 <span>Ver Demo</span>
               </Link>
             </div>

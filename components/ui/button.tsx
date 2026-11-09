@@ -9,11 +9,11 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'default', ...props }, ref) => {
     const variants = {
-      default: 'bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-600/20 active:scale-[0.98]',
-      destructive: 'bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/20 active:scale-[0.98]',
-      outline: 'border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200',
-      secondary: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700',
-      ghost: 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
+      default: 'bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-600/20 border border-transparent',
+      destructive: 'bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/20 border border-transparent',
+      outline: 'border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 hover:border-orange-500/40 text-zinc-800 dark:text-zinc-200',
+      secondary: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-transparent',
+      ghost: 'hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border border-transparent',
       link: 'text-orange-600 underline-offset-4 hover:underline p-0 h-auto',
     };
 
@@ -28,7 +28,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
+          'inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors duration-150 outline-none focus:outline-none focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none',
           variants[variant],
           sizes[size],
           className

@@ -17,6 +17,19 @@ export type DiscountType = 'PERCENTAGE' | 'FIXED';
 
 export type WhatsAppMsgStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
 
+export interface DaySchedule {
+  day: string;
+  dayOfWeek: number; // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  isOpen: boolean;
+  openTime: string; // HH:mm
+  closeTime: string; // HH:mm
+}
+
+export interface BusinessScheduleConfig {
+  autoSchedule: boolean;
+  days: DaySchedule[];
+}
+
 export interface Business {
   id: string;
   user_id?: string;
@@ -32,6 +45,7 @@ export interface Business {
   currency: string;
   currency_symbol: string;
   is_open: boolean;
+  opening_hours?: BusinessScheduleConfig;
   estimated_delivery_min: number;
   estimated_delivery_max: number;
   estimated_pickup_min: number;

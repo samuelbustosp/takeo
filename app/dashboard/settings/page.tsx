@@ -1,10 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { getBusiness, updateBusiness, createBusiness, getSettings, updateSettings } from '@/lib/data/store';
+import {
+  getBusiness,
+  updateBusiness,
+  createBusiness,
+  getSettings,
+  updateSettings,
+  DEFAULT_BUSINESS_SCHEDULE,
+  isScheduleCurrentlyOpen,
+} from '@/lib/data/store';
 import { compressAndUploadImage } from '@/lib/utils/image-compression';
 import { sendWhatsAppMessage } from '@/lib/whatsapp/service';
-import { Business, BusinessSettings } from '@/types';
+import { Business, BusinessSettings, BusinessScheduleConfig, DaySchedule } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -56,6 +64,7 @@ const emptyBusinessTemplate: Business = {
   allows_pickup: true,
   payment_methods: ['CASH', 'TRANSFER'],
   instagram: '',
+  opening_hours: DEFAULT_BUSINESS_SCHEDULE,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };
@@ -286,21 +295,65 @@ export default function SettingsPage() {
   if (!business || !settings) return null;
 
   const isNewBusiness = !business.id;
+  const scheduleConfig: BusinessScheduleConfig = business.opening_hours || DEFAULT_BUSINESS_SCHEDULE;
+  const autoEvaluatedOpen = isScheduleCurrentlyOpen(scheduleConfig);
+
+  const handleToggleAutoSchedule = (auto: boolean) => {
+    const nextSchedule: BusinessScheduleConfig = {
+      ...scheduleConfig,
+      autoSchedule: auto,
+    };
+    setBusiness({
+      ...business,
+      opening_hours: nextSchedule,
+      is_open: auto ? isScheduleCurrentlyOpen(nextSchedule) : business.is_open,
+    });
+  };
+
+  const handleUpdateDaySchedule = (dayOfWeek: number, patch: Partial<DaySchedule>) => {
+    const nextDays = scheduleConfig.days.map((d) =>
+      d.dayOfWeek === dayOfWeek ? { ...d, ...patch } : d
+    );
+    const nextSchedule: BusinessScheduleConfig = {
+      ...scheduleConfig,
+      days: nextDays,
+    };
+    setBusiness({
+      ...business,
+      opening_hours: nextSchedule,
+      is_open: nextSchedule.autoSchedule ? isScheduleCurrentlyOpen(nextSchedule) : business.is_open,
+    });
+  };
+
+  const handleApplyMondayToAll = () => {
+    const monday = scheduleConfig.days.find((d) => d.dayOfWeek === 1) || scheduleConfig.days[0];
+    if (!monday) return;
+    const nextDays = scheduleConfig.days.map((d) => ({
+      ...d,
+      openTime: monday.openTime,
+      closeTime: monday.closeTime,
+    }));
+    const nextSchedule: BusinessScheduleConfig = {
+      ...scheduleConfig,
+      days: nextDays,
+    };
+    setBusiness({
+      ...business,
+      opening_hours: nextSchedule,
+      is_open: nextSchedule.autoSchedule ? isScheduleCurrentlyOpen(nextSchedule) : business.is_open,
+    });
+  };
 
   return (
     <div className="w-full space-y-6 pb-14">
       {/* Top Header Bar with Sticky Save Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200/80 dark:border-zinc-800/80 pb-5">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Configuración General</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-white">
             Ajustes del Negocio & Catálogo
           </h1>
           <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-            Personalizá tu marca, banner, modalidades de despacho y conexión a WhatsApp.
+            Personalizá tu marca, banner, horarios de apertura, envíos y conexión a WhatsApp.
           </p>
         </div>
 
@@ -386,13 +439,29 @@ export default function SettingsPage() {
               </div>
 
               {/* Open / Closed Switch */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {scheduleConfig.autoSchedule && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/25 text-orange-600 dark:text-orange-400">
+                    <Clock className="w-3 h-3" />
+                    <span>Horario Automático</span>
+                  </span>
+                )}
                 <span className={`text-xs font-bold ${business.is_open ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
                   {business.is_open ? 'Local Abierto' : 'Local Cerrado'}
                 </span>
                 <Switch
                   checked={business.is_open}
-                  onCheckedChange={(val) => setBusiness({ ...business, is_open: val })}
+                  onCheckedChange={(val) => {
+                    // Switching manually turns off autoSchedule so manual override sticks
+                    setBusiness({
+                      ...business,
+                      is_open: val,
+                      opening_hours: {
+                        ...scheduleConfig,
+                        autoSchedule: false,
+                      },
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -645,6 +714,151 @@ export default function SettingsPage() {
 
         {/* TAB 3: ENVÍOS & HORARIOS */}
         <TabsContent value="entregas" className="space-y-6">
+          {/* Horarios y Días de Apertura */}
+          <div className="relative overflow-hidden p-6 sm:p-8 rounded-3xl bg-white/80 dark:bg-zinc-900/70 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs space-y-6">
+            <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-orange-500/70 to-transparent" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-500" />
+                  <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white">
+                    Horarios y Días de Apertura
+                  </h3>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Configurá tus días y franjas de atención para que el catálogo muestre automáticamente si el negocio está abierto o cerrado.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 self-start sm:self-auto bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/70 px-3.5 py-2.5 rounded-2xl">
+                <div className="text-right">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-white block">
+                    Modo Automático
+                  </span>
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block">
+                    {scheduleConfig.autoSchedule
+                      ? autoEvaluatedOpen
+                        ? 'Abierto ahora por horario'
+                        : 'Cerrado ahora por horario'
+                      : 'Control manual activo'}
+                  </span>
+                </div>
+                <Switch
+                  checked={scheduleConfig.autoSchedule}
+                  onCheckedChange={handleToggleAutoSchedule}
+                />
+              </div>
+            </div>
+
+            {/* Quick action bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-orange-500/5 dark:bg-orange-500/10 border border-orange-500/20 rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-2.5 text-xs">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    business.is_open ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                  }`}
+                />
+                <span className="font-semibold text-zinc-700 dark:text-zinc-200">
+                  Estado actual en el catálogo:{' '}
+                  <strong className={business.is_open ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}>
+                    {business.is_open ? 'Abierto ahora' : 'Cerrado'}
+                  </strong>
+                </span>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleApplyMondayToAll}
+                className="text-xs h-8 rounded-xl border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Copiar horario del Lunes a toda la semana</span>
+              </Button>
+            </div>
+
+            {/* Days list */}
+            <div className="grid grid-cols-1 gap-2.5">
+              {scheduleConfig.days.map((dayItem) => (
+                <div
+                  key={dayItem.dayOfWeek}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-colors ${
+                    dayItem.isOpen
+                      ? 'bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-200/80 dark:border-zinc-800/90'
+                      : 'bg-zinc-100/40 dark:bg-zinc-900/30 border-zinc-200/40 dark:border-zinc-800/40 opacity-65'
+                  }`}
+                >
+                  <div className="flex items-center justify-between sm:justify-start gap-3.5 min-w-[170px]">
+                    <Switch
+                      checked={dayItem.isOpen}
+                      onCheckedChange={(val) =>
+                        handleUpdateDaySchedule(dayItem.dayOfWeek, { isOpen: val })
+                      }
+                    />
+                    <div>
+                      <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 block">
+                        {dayItem.day}
+                      </span>
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          dayItem.isOpen
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-zinc-400'
+                        }`}
+                      >
+                        {dayItem.isOpen ? 'Abierto' : 'Cerrado'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {dayItem.isOpen ? (
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                      <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <span className="text-[11px] font-semibold text-zinc-400 uppercase">
+                          Abre
+                        </span>
+                        <input
+                          type="time"
+                          value={dayItem.openTime}
+                          onChange={(e) =>
+                            handleUpdateDaySchedule(dayItem.dayOfWeek, {
+                              openTime: e.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-900 dark:text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                        />
+                      </div>
+
+                      <span className="text-zinc-400 font-bold">—</span>
+
+                      <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <span className="text-[11px] font-semibold text-zinc-400 uppercase">
+                          Cierra
+                        </span>
+                        <input
+                          type="time"
+                          value={dayItem.closeTime}
+                          onChange={(e) =>
+                            handleUpdateDaySchedule(dayItem.dayOfWeek, {
+                              closeTime: e.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs font-bold text-zinc-900 dark:text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-medium text-zinc-400 italic">
+                      Sin atención al público este día
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs space-y-6">
             <div className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <h3 className="font-extrabold text-lg text-zinc-900 dark:text-white">
