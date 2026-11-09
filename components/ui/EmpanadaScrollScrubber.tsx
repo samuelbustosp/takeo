@@ -8,7 +8,7 @@ import {
   Utensils,
 } from 'lucide-react';
 
-const TOTAL_FRAMES = 44;
+const TOTAL_FRAMES = 87;
 
 interface StoryBeat {
   id: string;
@@ -159,6 +159,8 @@ export function EmpanadaScrollScrubber() {
         if (i === 0 || loaded === 1) {
           setIsReady(true);
           drawFrame(currentFrameRef.current);
+        } else if (i === currentFrameRef.current) {
+          drawFrame(currentFrameRef.current);
         }
       };
     }
@@ -188,8 +190,8 @@ export function EmpanadaScrollScrubber() {
 
     const tick = () => {
       const diff = targetProgressRef.current - smoothProgressRef.current;
-      if (Math.abs(diff) > 0.0005) {
-        smoothProgressRef.current += diff * 0.16;
+      if (Math.abs(diff) > 0.0002) {
+        smoothProgressRef.current += diff * 0.18;
       } else {
         smoothProgressRef.current = targetProgressRef.current;
       }
